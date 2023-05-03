@@ -9,7 +9,7 @@ ReactDOM.render(
 
    <DesktopEnvironmentContextProvider>
     <React.StrictMode>
-        <App />
+        <App id={0}/>
     </React.StrictMode>
    </DesktopEnvironmentContextProvider>,
    

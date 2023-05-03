@@ -4,7 +4,7 @@ import { Window, Desktop, SpawnWindowButton } from './lib';
 // import './App.css'
 import ExampleWindow from './ExampleWindow';
 
-function App() {
+function App({id}) {
   const  { useMinimise }  = useContext(WindowManagerContext); 
   //!
 
@@ -12,11 +12,11 @@ function App() {
 
   // const masterRef = useRef();
   // const maxZIndex = 2147483647;
-  const id = 0;
+
   return (
     <Desktop
       // ref={masterRef}
-      id={0}
+      id={id}
       minimisedWindowIds={minimisedWindowIds}
       style={{
         width: '100vw',

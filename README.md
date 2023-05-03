@@ -19,7 +19,7 @@ import { DesktopEnvironmentContextProvider } from './lib';
 ReactDOM.createRoot(document.getElementById('root')).render(
    <DesktopEnvironmentContextProvider>
         <React.StrictMode>
-            <App />
+            <App id={0}/>
         </React.StrictMode>
     </DesktopEnvironmentContextProvider>,
 )
@@ -29,15 +29,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 import { useContext } from 'react';
 import { WindowManagerContext, Window, Desktop, SpawnWindowButton } from 'react-desktop-environment';
 
-function App() {
+function App({id}) {
     const  { useMinimise }  = useContext(WindowManagerContext); 
     const { minimisedWindowIds, minimiseWindow, restoreMinimisedWindow } = useMinimise([]);
 
     // const maxZIndex = 2147483647;
-    const id = 0;
     return (
         <Desktop
-            id={0}
+            id={id}
             minimisedWindowIds={minimisedWindowIds}
             style={{
                 width: '100vw',
