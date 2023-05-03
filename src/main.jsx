@@ -2,15 +2,17 @@ import React from 'react'
 import ReactDOM from 'react-dom'
 import './index.css'
 import App from './App'
+import { DesktopEnvironmentContextProvider } from './lib';
 
-import WindowManagerContextProvider from 'react-window-manager';
 
 ReactDOM.render(
-  <WindowManagerContextProvider>
+
+   <DesktopEnvironmentContextProvider>
     <React.StrictMode>
-      <App />
+        <App />
     </React.StrictMode>
-  </WindowManagerContextProvider>,
+   </DesktopEnvironmentContextProvider>,
+   
   document.getElementById('root')
 );
 

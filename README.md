@@ -1,44 +1,11 @@
-# React Window Manager
+# React Desktop Environment
 
-React Window Manager is a react context that manages element rendering with:
- - windowsTree:
-```javascript
-{
-    id:{ 
-        id:{}, 
-        id:{
-            id:{}
-        }, 
-        id:{} 
-    }, 
-    id:{
-        id:{}
-        id:{}
-    }
-}
-```
- - windowsRef:
-```javascript
-{
-    id:{ 
-        address: [ 12, 26, 70, 80, id ],
-        zIndex: 9,
-        props: { ...props },
-        Component: Component
-    }, 
-    id:{
-        address: [ 12, 26, 70, 80, parentId, id ],
-        zIndex: 15,
-        props: { ...props },
-        Component: Component
-    }
-}
-```
+React Desktop Environment is a react ui library that mimicks the behaviour of an OS ui.
 
 ## Installation
 
 ```zsh
-npm i react-window-manager
+npm i react-desktop-environment
 ```
 
 ## Usage
@@ -47,14 +14,14 @@ npm i react-window-manager
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
-import WindowManagerContextProvider from 'react-window-manager';
+import { DesktopEnvironmentContextProvider } from './lib';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <WindowManagerContextProvider>
-    <React.StrictMode>
-        <App />
-    </React.StrictMode>
-  </WindowManagerContextProvider>,
+   <DesktopEnvironmentContextProvider>
+        <React.StrictMode>
+            <App />
+        </React.StrictMode>
+    </DesktopEnvironmentContextProvider>,
 )
 ```
 ```javascript

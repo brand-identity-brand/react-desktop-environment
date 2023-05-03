@@ -1,15 +1,12 @@
+import WindowManagerContextProvider, { WindowManagerContext } from 'react-window-manager';
 import { createContext, useState, useEffect, useRef } from "react";
 import { htmlToElement } from "./utils";
 
-export const DesktopEnvironmentContext = createContext(null);
-
-/**
- * <DesktopEnviornmentProvider>
- *     <WindowManagerContextProvider>
- *          <App/>
- *     </WindowManagerContextProvider>
- * </DesktopEnviornmentProvider>
- */
+const DesktopEnvironmentContext = createContext(null);
+export {
+    WindowManagerContext,
+    DesktopEnvironmentContext
+}
 
 export default function DesktopEnvironmentContextProvider({children}){
     // create and empty img element for drag img
@@ -48,8 +45,18 @@ export default function DesktopEnvironmentContextProvider({children}){
     const value = null;
 
     return(
-        <DesktopEnvironmentContext.Provider value={value}>
-            {children}
-        </DesktopEnvironmentContext.Provider>
+        <WindowManagerContextProvider>
+            <DesktopEnvironmentContext.Provider value={value}>
+                {children}
+            </DesktopEnvironmentContext.Provider>
+        </WindowManagerContextProvider>
     )
 }
+
+/**
+ * <DesktopEnviornmentProvider>
+ *     <WindowManagerContextProvider>
+ *          <App/>
+ *     </WindowManagerContextProvider>
+ * </DesktopEnviornmentProvider>
+ */

@@ -1,0 +1,69 @@
+.windowGrid {
+    /* Grid/window should be absolute, but their container should probably be relative */
+    position: absolute;
+
+    background-color: white;
+    color: black;
+
+
+    display: grid;
+    grid-template-columns: 2px auto 2px;
+    grid-template-rows: 2px auto 2px;
+
+    overflow: hidden;
+}
+
+.t{
+    grid-row-start: 1;
+    grid-row-end: 2;
+}
+.m{
+    grid-row-start: 2;
+    grid-row-end: 3;
+}
+.b{
+    grid-row-start: 3;
+    grid-row-end: 4;
+}
+
+.l{
+    grid-column-start: 1;
+    grid-column-end: 2;
+
+}
+.c{
+    grid-column-start: 2;
+    grid-column-end: 3;
+
+}
+.r{
+    grid-column-start: 3;
+    grid-column-end: 4;
+}
+.gridMax{
+    width: 100%;
+    height: 100%;
+    background-color: black;
+}
+.gridMaxBody{
+    width: 100%;
+    height: 100%;
+    background-color: white;
+}
+
+.nwse-resize {
+    cursor: nwse-resize;
+}
+.ns-resize {
+    cursor: ns-resize;
+}
+.nesw-resize {
+    cursor: nesw-resize;
+}
+.ew-resize {
+    cursor: ew-resize;
+}
+
+.lock-resize {
+    cursor: default;
+}
