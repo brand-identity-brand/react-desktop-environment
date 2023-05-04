@@ -20,7 +20,7 @@ export default function WindowFrame({children, className, style, onMouseDown, ..
     return (
         <div
             ref={gridRef}
-            className={styles(className, css.windowGrid)}
+            className={styles(css.windowGrid, className)}
             style={{
                 ...style,
                 top: `${gridPosition.top}px`,

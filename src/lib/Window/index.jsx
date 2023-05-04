@@ -43,6 +43,7 @@ export default function Window({children, className, style, onClick, ...props}){
     const [ maximisedLocally, setMaximisedLocally ] = useState(false);
     return (
         <WindowFrame
+            className={className}
             lockResize={ resizeWindow === 'disable' || minimisedLocally || maximisedLocally }
             onMouseDown={()=>{
                 setLocalZIndex( windowToTop(id) );
