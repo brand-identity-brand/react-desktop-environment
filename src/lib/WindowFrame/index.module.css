@@ -9,7 +9,20 @@
     display: grid;
     grid-template-columns: 2px auto 2px;
     grid-template-rows: 2px auto 2px;
+    /* TODO: this is for usability
+    grid-template-columns: 2px 2px auto 2px 2px;
+    grid-template-rows: 2px 2px auto 2px 2px; 
 
+        v = vertices 
+        e = edges
+        b = body
+        
+        v v e v v
+        v b b b v
+        e b b b e
+        v b b b v
+        v v e v v
+    */
     overflow: hidden;
 }
 

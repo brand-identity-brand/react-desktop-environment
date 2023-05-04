@@ -107,6 +107,7 @@ export default function Window({children, className, style, onClick, ...props}){
                             // * this disables drag when maximised.
                             draggable={maximisedLocally || moveWindow === 'disable' ? false : true}
                             onDragStart={(e)=>{
+                                // console.log(e)
                                 // setIsDragging(true);
                                 offsetRef.current = {
                                     left: gridPosition.left - e.clientX, 
