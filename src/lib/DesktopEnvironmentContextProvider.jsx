@@ -25,15 +25,15 @@ export default function DesktopEnvironmentContextProvider({children}){
         // * https://stackoverflow.com/questions/524696/how-to-create-a-style-tag-with-javascript
         const css = `
             .rde-display-none { 
-                display: none; 
+                display: none !important; 
             }
             .rde-unselectable {
-                -webkit-touch-callout: none;
-                -webkit-user-select: none;
-                -khtml-user-select: none;
-                -moz-user-select: none;
-                -ms-user-select: none;
-                user-select: none;
+                -webkit-touch-callout: none !important;
+                -webkit-user-select: none !important; 
+                -khtml-user-select: none !important; 
+                -moz-user-select: none !important; 
+                -ms-user-select: none !important; 
+                user-select: none !important; 
             }
         `;
         const head = document.head || document.getElementsByTagName('head')[0];
