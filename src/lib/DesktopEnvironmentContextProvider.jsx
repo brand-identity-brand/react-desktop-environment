@@ -24,6 +24,8 @@ export default function DesktopEnvironmentContextProvider({children}){
         }
         // * https://stackoverflow.com/questions/524696/how-to-create-a-style-tag-with-javascript
         const css = `
+            @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+
             .rde-display-none { 
                 display: none !important; 
             }
@@ -35,6 +37,20 @@ export default function DesktopEnvironmentContextProvider({children}){
                 -ms-user-select: none !important; 
                 user-select: none !important; 
             }
+
+            .rde-material-symbols-outlined {
+                font-size: 16px;
+                font-variation-settings:
+                    'FILL' 0,
+                    'wght' 400,
+                    'GRAD' 0,
+                    'opsz' 24
+                
+            }
+            .rde-custom-font-symbols {
+                line-height: 20px;
+            }
+
         `;
         const head = document.head || document.getElementsByTagName('head')[0];
         const style = document.createElement('style');

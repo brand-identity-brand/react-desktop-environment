@@ -25,7 +25,7 @@ function App({id}) {
     >
       <SpawnWindowButton
         Component={Window}
-        minimiseWindow= {(id) => {  minimiseWindow(id); }}
+        // minimiseWindow= {(id) => {  minimiseWindow(id); }}
         // minimiseWindow= {'disable'}//{(id) => {  minimiseWindow(id); }}
         // moveWindow={'disable'}
         // closeWindow={'disable'}

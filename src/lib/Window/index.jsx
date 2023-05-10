@@ -98,7 +98,10 @@ export default function Window({children, className, style, onClick, ...props}){
                                         setMinimisedLocally(!minimisedLocally);
                                     }}
                                 > 
-                                    {minimisedLocally? '>' : '='} 
+                                    {minimisedLocally
+                                        ? <span className={'rde-custom-font-symbols'}>{'='}</span>//<span className={'material-symbols-outlined rde-material-symbols-outlined'}>chevron_right</span>
+                                        : <span className={'rde-custom-font-symbols'}>{'>'}</span>//<span className={'material-symbols-outlined rde-material-symbols-outlined'}>drag_handle</span>
+                                    } 
                                 </button> 
                                 : null
                             }
@@ -163,7 +166,7 @@ export default function Window({children, className, style, onClick, ...props}){
                                         minimiseWindow(id);
                                     }}
                                 > 
-                                    - 
+                                    <span className={'rde-custom-font-symbols'}>-</span>
                                 </button> 
                                 : minimiseWindow === 'disable' || minimiseWindow === undefined
                                     ? null
@@ -176,6 +179,7 @@ export default function Window({children, className, style, onClick, ...props}){
                                     onClick={()=>{
                                         if ( maximiseWindow ) {
                                             // save the window size
+                                            // TODO: monitor fullscreen
                                             const { width, height} = maximiseWindow();
                                         } else {
                                             if (!maximisedLocally) {
@@ -190,7 +194,9 @@ export default function Window({children, className, style, onClick, ...props}){
                                             setMaximisedLocally(!maximisedLocally);
                                         }
                                     }}
-                                > + </button>
+                                >
+                                    <span className={'material-symbols-outlined rde-material-symbols-outlined'}>{maximisedLocally? 'fullscreen_exit' : 'fullscreen'}</span>
+                                </button>
                             }
                             { closeWindow === 'disable' 
                                 ? null
@@ -199,7 +205,9 @@ export default function Window({children, className, style, onClick, ...props}){
                                     onClick={()=>{
                                         closeThisWindow(id);
                                     }}
-                                > x </button>
+                                >
+                                    <span className={'material-symbols-outlined rde-material-symbols-outlined'}>close</span>
+                                </button>
                             }
                         </div>
                     </div>
@@ -222,3 +230,13 @@ Window.defaultProps = {
     //     height: 'calc( 100% - 4px)',
     // }
 }
+
+// export function WindowBody({children, ...props}) {
+//     return (
+//         <div className={css.mid_body} {...props}>
+//             { children }
+//         </div>
+//     )
+// }
+
+// Window.Body = WindowBody;
