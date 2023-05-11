@@ -16,8 +16,8 @@ export const Desktop = forwardRef( function Desktop({children, className, style,
         windowsTree,
         renderWindow,
         getWindowsByParentId
-    } = useContext(WindowManagerContext);   
-    // const { minimisedWindowIds, minimiseWindow, restoreMinimisedWindow } = useMinimise([]);
+    } = useContext(WindowManagerContext);
+   
 
     const windowIds = Object.keys( getWindowsByParentId(id) );
     // console.log('Desktop.prop.id', windowIds)
@@ -26,6 +26,7 @@ export const Desktop = forwardRef( function Desktop({children, className, style,
     // const masterRef = useRef();
 
     // const maxZIndex = 2147483647;
+
     return (
         <div
             ref={ref}

@@ -42,7 +42,7 @@ export default function DesktopEnvironmentContextProvider({children}){
                 font-size: 16px;
                 font-variation-settings:
                     'FILL' 0,
-                    'wght' 400,
+                    'wght' 600,
                     'GRAD' 0,
                     'opsz' 24
                 
@@ -59,6 +59,7 @@ export default function DesktopEnvironmentContextProvider({children}){
     },[]);
 
     const value = null;
+
 
     return(
         <WindowManagerContextProvider>

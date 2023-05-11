@@ -78,7 +78,7 @@ export default function Window({children, className, style, onClick, ...props}){
                 const [ gridSize, setGridSize ] = useGridSize;
                 return (<>
                     <div
-                        className={`${css.top} rde-unselectable`}
+                        className={`${css.top} rde-unselectable ${classNames?.top}`}
                     >
                         <div
                             className={`${css.top_left}`}
