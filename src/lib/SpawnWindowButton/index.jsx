@@ -13,6 +13,8 @@ export default function SpawnWindowButton({className, style, children, ...props}
         closeWindow, // 'disable'
         moveWindow, // 'disable'
         resizeWindow, // 'disable'
+        //
+        useMinimise
     } = props;
     // this component
     const { 
@@ -39,7 +41,7 @@ export default function SpawnWindowButton({className, style, children, ...props}
                         closeWindow, // 'disable', undefined
                         moveWindow, // 'disable', undefined
                         resizeWindow, // 'disable', undefined
-                    }, parentWindowId);
+                    }, parentWindowId, useMinimise);
                 }
             }}
         >

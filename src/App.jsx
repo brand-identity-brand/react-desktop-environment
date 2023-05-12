@@ -44,6 +44,7 @@ function App({id}) {
         // closeWindow={'disable'}
         // resizeWindow={'disable'}
         parentWindowId={id}
+        useMinimise={{ minimisedWindowIds, minimiseWindow, restoreMinimisedWindow }}
       >
         + example window
       </SpawnWindowButton>
