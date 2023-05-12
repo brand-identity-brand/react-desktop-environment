@@ -156,13 +156,22 @@ export default function Window({children, className, style, onClick, ...props}){
                                         // save the window size
                                         // TODO
                                         // ? should maximised then minimised window restore to the state prior to maximisation
-                                        // ? or should it be restored to the maximised state.
-                                        // windowPrevSizeRef.current = {
-                                        //     width: gridSize.width,
-                                        //     height: gridSize.height
-                                        // }
-                                        windowsRef.current[id].props.initialPosition = gridPosition;
-                                        windowsRef.current[id].props.initialSize = gridSize;
+                                        // ?-cont. or should it be restored to the maximised state.
+                                        // ?-cont. restoring to the state prior to maximisation for now becuase it is easier to impelment, and it does not intefere with UX (max state will block content)
+                                        // * windowPrevSizeRef not used here because Window gets unmounted&remounted, so we need to modify the globalState (context)
+                                        if ( maximiseWindow ) {
+                                            // save the window size
+                                            // TODO: monitor fullscreen
+                                            const { width, height} = maximiseWindow();
+                                        } else {
+                                            if (!maximisedLocally) {
+                                                windowsRef.current[id].props.initialSize = gridSize;
+                                                windowsRef.current[id].props.initialPosition = gridPosition;
+                                            } else {
+                                                windowsRef.current[id].props.initialSize = windowPrevSizeRef.current;
+                                                windowsRef.current[id].props.initialPosition = windowPrevPositionRef.current;
+                                            }
+                                        }
                                         minimiseWindow(id);
                                     }}
                                 > 
