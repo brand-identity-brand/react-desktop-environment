@@ -3,17 +3,18 @@ import { WindowManagerContext } from './lib';
 import { Window, Desktop, SpawnWindowButton } from './lib';
 // import './App.css'
 import ExampleWindow from './ExampleWindow';
+import ExampleStart from './ExampleStart';
 
 function App({id}) {
   const  { useMinimise }  = useContext(WindowManagerContext); 
   //!
 
-  const { minimisedWindowIds, minimiseWindow, restoreMinimisedWindow } = useMinimise([]);
+  const { minimisedWindowIds, minimiseWindow, restoreMinimisedWindow } = useMinimise();
 
   // const masterRef = useRef();
   // const maxZIndex = 2147483647;
 
-  return (
+  return (<>
     <Desktop
       // ref={masterRef}
       id={id}
@@ -49,6 +50,8 @@ function App({id}) {
         + example window
       </SpawnWindowButton>
     </Desktop>
+    <ExampleStart id={id}/>
+    </>
   )
 }
 

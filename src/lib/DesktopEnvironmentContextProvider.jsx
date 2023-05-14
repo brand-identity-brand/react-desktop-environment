@@ -10,6 +10,7 @@ export {
 
 export default function DesktopEnvironmentContextProvider({children}){
     // create and empty img element for drag img
+    //TODO: import '@/node_modules/react-desktop-environment/dist/style.css';
     useEffect(()=>{
         /* append an empty image to body if it doesnt exist */
         if ( !document.getElementById('dragImg') ){

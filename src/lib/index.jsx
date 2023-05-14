@@ -8,6 +8,13 @@ import Window from './Window';
 import Desktop from './Desktop';
 import SpawnWindowButton from './SpawnWindowButton';
 
+/**
+ * { Bar, Menu, Icons, Windows, Footer } = Start;
+ * { Windows.Minimised } = Windows;
+ */
+
+import * as Start from './Start';
+
 export {
     DesktopEnvironmentContextProvider,
     WindowManagerContext,
@@ -15,5 +22,6 @@ export {
     WindowFrame,
     Window,
     Desktop,
-    SpawnWindowButton
+    SpawnWindowButton,
+    Start 
 }
