@@ -46,6 +46,7 @@ export default function Window({children, className, style, onClick, ...props}){
             className={className}
             lockResize={ resizeWindow === 'disable' || minimisedLocally || maximisedLocally }
             onMouseDown={()=>{
+                // TODO: check if zIndex is already top, if so do nothing;
                 setLocalZIndex( windowToTop(id) );
             }}
             style={{
