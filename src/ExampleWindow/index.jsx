@@ -1,6 +1,8 @@
 import css from './index.module.css';
-import { useEffect, useState } from "react";
-import { Window, Desktop, SpawnWindowButton } from "../lib";
+import { useEffect, useState, useMemo } from "react";
+import { Window, Desktop, SpawnWindowButton, rde } from "../lib";
+// import { RESET } from 'jotai/utils';
+
 
 export default function ExampleWindow({...props}){
     // autofilled from createWindow 
@@ -8,12 +10,26 @@ export default function ExampleWindow({...props}){
     // userinput from createWindow
     const { initialPosition, initialSize, minSize, minimiseWindow, closeWindow, moveWindow, resizeWindow } = props;
 
-    //
-    const [ count, setCount ] = useState(0);
-    const [ title, setTitle ] = useState(`count = ${count}`);
-    
-    useEffect(()=>{ setTitle(`count = ${count}`) },[count]);
 
+    // new
+    const defaultCounter = useMemo( ()=>rde.atom(id,'count',0), []);
+    const [ count, setCount ] = rde.useAtom(defaultCounter);
+    const defaultTitle = useMemo( ()=>rde.atom(id,'title', `count = ${count}`), [count]);
+    const [ title, setTitle ] = rde.useAtom(defaultTitle);
+    // const closeWindowP = onWindowClose([setCount, setTitle]);
+
+    useEffect(()=>{ 
+        console.log('counted');
+        setTitle(`count = ${count}`);
+    },[count]);
+    // old
+    // const [ count, setCount ] = useState(0);
+    // const [ title, setTitle ] = useState(`count = ${count}`);
+    
+    // useEffect(()=>{ setTitle(`count = ${count}`) },[count]);
+
+// windowsRef.current[id].closeWindow
+/* windowsRef.current[id].states = []*/
     return (
         <Window
             // autofilled from createWindow 
@@ -24,7 +40,7 @@ export default function ExampleWindow({...props}){
             initialSize={initialSize}
             /* 'local', 'disable', minimiseFunction */
             minimiseWindow = {minimiseWindow }
-            closeWindow={closeWindow}
+            closeWindow={ rde.onWindowClose([setCount, setTitle]) }//{closeWindowP} // TODO priotiy: insert this to widowsRef[id].current
             moveWindow={moveWindow}
             resizeWindow={resizeWindow}
             // local values.

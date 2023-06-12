@@ -1,5 +1,5 @@
 import { useContext, useRef } from 'react';
-import { WindowManagerContext } from '../DesktopEnvironmentContextProvider';
+import { WindowManagerContext } from '../lib/contexts/DesktopEnvironmentContextProvider';
 
 export default function SpawnWindowButton({className, style, children, ...props}){
     // createWindow
@@ -38,7 +38,7 @@ export default function SpawnWindowButton({className, style, children, ...props}
                         initialPosition: initialPosition,
                         initialSize: initialSize,
                         minimiseWindow: minimiseWindow, // 'disable', undefined, function() => disabling this wil disable maximise too
-                        closeWindow, // 'disable', undefined
+                        closeWindow, // 'disable', undefined ,()=>{}
                         moveWindow, // 'disable', undefined
                         resizeWindow, // 'disable', undefined
                     }, parentWindowId, useMinimise);

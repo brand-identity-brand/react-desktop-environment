@@ -2,18 +2,26 @@ import
     DesktopEnvironmentContextProvider,{ 
         WindowManagerContext,
         DesktopEnvironmentContext 
-    } from './DesktopEnvironmentContextProvider';
-import WindowFrame from './WindowFrame';
-import Window from './Window';
-import Desktop from './Desktop';
-import SpawnWindowButton from './SpawnWindowButton';
+    } from './contexts/DesktopEnvironmentContextProvider';
+import WindowFrame from './components/WindowFrame';
+import Window from './components/Window';
+import Desktop from './components/Desktop';
+import SpawnWindowButton from '../SpawnWindowButton';
 
 /**
  * { Bar, Menu, Icons, Windows, Footer } = Start;
  * { Windows.Minimised } = Windows;
  */
 
-import * as Start from './Start';
+import * as Start from './components/Start';
+
+import { atom, useAtom, onWindowClose } from './hooks/jotai';
+
+const rde = {
+    atom,
+    useAtom,
+    onWindowClose
+}
 
 export {
     DesktopEnvironmentContextProvider,
@@ -23,5 +31,6 @@ export {
     Window,
     Desktop,
     SpawnWindowButton,
-    Start 
+    Start,
+    rde
 }

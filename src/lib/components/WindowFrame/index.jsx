@@ -1,5 +1,5 @@
 import css from './index.module.css';
-import {styles} from '../utils';
+import {styles} from '/src/lib/utils';
 import { useRef, useEffect, useState } from 'react';
 
 export default function WindowFrame({children, className, style, onMouseDown, ...props}){

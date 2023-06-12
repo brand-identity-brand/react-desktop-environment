@@ -6,14 +6,14 @@ import ExampleWindow from './ExampleWindow';
 import ExampleStart from './ExampleStart';
 
 function App({id}) {
-  const  { useMinimise }  = useContext(WindowManagerContext); 
+  const  { useMinimise, windowsRef }  = useContext(WindowManagerContext); 
   //!
 
   const { minimisedWindowIds, minimiseWindow, restoreMinimisedWindow } = useMinimise();
 
   // const masterRef = useRef();
   // const maxZIndex = 2147483647;
-
+console.log(windowsRef)
   return (<>
     <Desktop
       // ref={masterRef}

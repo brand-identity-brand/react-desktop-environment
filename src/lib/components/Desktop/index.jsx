@@ -1,7 +1,7 @@
 import css from './index.module.css';
 import { useContext, useState, useEffect, useRef, cloneElement, forwardRef } from 'react';
-import { WindowManagerContext } from '../DesktopEnvironmentContextProvider';
-import { styles } from '../utils';
+import { WindowManagerContext } from '../../contexts/DesktopEnvironmentContextProvider';
+import { styles } from '../../utils';
 // import { Window } from './lib';
 // TODO: maybe remove forwardRef Wapper.
 export const Desktop = forwardRef( function Desktop({children, className, style, ...props}, ref){

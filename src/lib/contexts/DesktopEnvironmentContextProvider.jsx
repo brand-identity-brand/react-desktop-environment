@@ -1,6 +1,6 @@
 import WindowManagerContextProvider, { WindowManagerContext } from 'react-window-manager';
 import { createContext, useState, useEffect, useRef } from "react";
-import { htmlToElement } from "./utils";
+import { htmlToElement } from "../utils";
 
 const DesktopEnvironmentContext = createContext(null);
 export {

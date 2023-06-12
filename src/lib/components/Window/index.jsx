@@ -2,6 +2,7 @@ import css from './index.module.css';
 import { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import { WindowManagerContext } from 'react-window-manager';
 import WindowFrame from '../WindowFrame';
+import { onWindowClose } from '../../hooks/jotai';
 
 export default function Window({children, className, style, onClick, ...props}){
     const {
@@ -15,7 +16,7 @@ export default function Window({children, className, style, onClick, ...props}){
         classNames,
         /* 'local', 'disable', minimiseFunction */
         minimiseWindow, // function called on minimise, could be undefined  // minimiseFuncion, undefined, false || 'disable'
-        closeWindow,
+        closeWindow, // setSate(RESET) run before closingWindow
         moveWindow,
         resizeWindow,
         //!unused
@@ -25,7 +26,7 @@ export default function Window({children, className, style, onClick, ...props}){
         windowsRef,
         closeWindow: closeThisWindow,
         windowToTop,
-      } = useContext(WindowManagerContext);
+    } = useContext(WindowManagerContext);
     const maxSize = {
         width: '100%',
         height: '100%'
@@ -40,7 +41,9 @@ export default function Window({children, className, style, onClick, ...props}){
 
     const [ localZIndex, setLocalZIndex ] = useState(initialZIndex);
     const [ minimisedLocally, setMinimisedLocally ] = useState(false);
-    const [ maximisedLocally, setMaximisedLocally ] = useState(false);
+    const [ maximisedLocally, setMaximisedLocally ] = useState(false); 
+
+
     return (
         <WindowFrame
             className={className}
@@ -77,13 +80,23 @@ export default function Window({children, className, style, onClick, ...props}){
             renderContent={( useGridPosition, useGridSize) => {
                 const [ gridPosition, setGridPosition ] = useGridPosition;
                 const [ gridSize, setGridSize ] = useGridSize;
+
+                // TODO: move all position and size changes here. 
+                useEffect(()=>{
+                    if ( maximisedLocally === false ) {
+                        windowsRef.current[id].props.initialPosition = gridPosition;
+                    }
+                },[gridPosition])
+                useEffect(()=>{
+                    if ( maximisedLocally === false ) {
+                        windowsRef.current[id].props.initialSize = gridSize;
+                    }
+                },[gridSize]);
+
+
                 return (<>
-                    <div
-                        className={`${css.top} rde-unselectable ${classNames?.top}`}
-                    >
-                        <div
-                            className={`${css.top_left}`}
-                        >
+                    <div className={`${css.top} rde-unselectable ${classNames?.top}`}>
+                        <div className={`${css.top_left}`}>
                             {/* local minimise here */}
                             { minimiseWindow === undefined //&& !maximisedLocally
                                 ? <button
@@ -107,8 +120,7 @@ export default function Window({children, className, style, onClick, ...props}){
                                 : null
                             }
                         </div>
-                        <div
-                            className={`${css.top_mid}`}
+                        <div className={`${css.top_mid}`}
                             // * this disables drag when maximised.
                             draggable={maximisedLocally || moveWindow === 'disable' ? false : true}
                             onDragStart={(e)=>{
@@ -141,9 +153,7 @@ export default function Window({children, className, style, onClick, ...props}){
                         >
                             {title}
                         </div>
-                        <div
-                            className={`${css.top_right} ${classNames?.top_right}`}
-                        >
+                        <div className={`${css.top_right} ${classNames?.top_right}`}>
                             {/* minimise according to parent */}
                             { typeof minimiseWindow === 'function'
                                 ? <button
@@ -213,6 +223,7 @@ export default function Window({children, className, style, onClick, ...props}){
                                 : <button
                                     className='rde-unselectable'
                                     onClick={()=>{
+                                        closeWindow();
                                         closeThisWindow(id);
                                     }}
                                 >
