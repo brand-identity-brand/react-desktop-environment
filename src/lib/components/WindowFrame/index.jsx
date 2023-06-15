@@ -1,3 +1,6 @@
+/**
+ * this component is the dragable and resizable frame the is being used for Window components.
+ */
 import css from './index.module.css';
 import {styles} from '/src/lib/utils';
 import { useRef, useEffect, useState } from 'react';

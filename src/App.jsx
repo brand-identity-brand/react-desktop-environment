@@ -1,5 +1,5 @@
 import { useContext, useState, useEffect, useRef } from 'react';
-import { WindowManagerContext } from './lib';
+import { WindowManagerContext, WindowWithJotaiStorageAtom } from './lib';
 import { Window, Desktop, SpawnWindowButton } from './lib';
 // import './App.css'
 import ExampleWindow from './ExampleWindow';
@@ -13,7 +13,7 @@ function App({id}) {
 
   // const masterRef = useRef();
   // const maxZIndex = 2147483647;
-console.log(windowsRef)
+// console.log(windowsRef)
   return (<>
     <Desktop
       // ref={masterRef}
@@ -45,9 +45,19 @@ console.log(windowsRef)
         // closeWindow={'disable'}
         // resizeWindow={'disable'}
         parentWindowId={id}
-        useMinimise={{ minimisedWindowIds, minimiseWindow, restoreMinimisedWindow }}
       >
         + example window
+      </SpawnWindowButton>
+      <SpawnWindowButton
+        Component={WindowWithJotaiStorageAtom}
+        minimiseWindow= {(id) => {  minimiseWindow(id); }}
+        // minimiseWindow= {'disable'}
+        // moveWindow={'disable'}
+        // closeWindow={'disable'}
+        // resizeWindow={'disable'}
+        parentWindowId={id}
+      >
+        + example window Jotai
       </SpawnWindowButton>
     </Desktop>
     <ExampleStart id={id}/>

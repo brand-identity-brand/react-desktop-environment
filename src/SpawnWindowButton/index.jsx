@@ -41,7 +41,7 @@ export default function SpawnWindowButton({className, style, children, ...props}
                         closeWindow, // 'disable', undefined ,()=>{}
                         moveWindow, // 'disable', undefined
                         resizeWindow, // 'disable', undefined
-                    }, parentWindowId, useMinimise);
+                    }, parentWindowId);//, useMinimise);
                 }
             }}
         >

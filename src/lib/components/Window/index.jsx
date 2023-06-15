@@ -1,8 +1,12 @@
+/**
+ * basic Window component that is meant ot be wrapped into preset Window
+ */
 import css from './index.module.css';
 import { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import { WindowManagerContext } from 'react-window-manager';
 import WindowFrame from '../WindowFrame';
 import { onWindowClose } from '../../hooks/jotai';
+
 
 export default function Window({children, className, style, onClick, ...props}){
     const {

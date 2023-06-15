@@ -7,7 +7,7 @@ import WindowFrame from './components/WindowFrame';
 import Window from './components/Window';
 import Desktop from './components/Desktop';
 import SpawnWindowButton from '../SpawnWindowButton';
-
+import WindowWithJotaiStorageAtom from './components/WindowWithJotaiStorageAtom';
 /**
  * { Bar, Menu, Icons, Windows, Footer } = Start;
  * { Windows.Minimised } = Windows;
@@ -29,6 +29,7 @@ export {
     DesktopEnvironmentContext,
     WindowFrame,
     Window,
+    WindowWithJotaiStorageAtom,
     Desktop,
     SpawnWindowButton,
     Start,
