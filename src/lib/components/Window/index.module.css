@@ -63,6 +63,8 @@
     align-items: center;
     /* gap: 2px;
     padding: 2px; */
+    white-space: nowrap;
+    overflow: hidden;
 }
 .top_right{
     --button-size: calc( 18px - 2px - 2px );

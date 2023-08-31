@@ -5,128 +5,89 @@ import css from './index.module.css';
 import { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import { WindowManagerContext } from 'react-window-manager';
 import WindowFrame from '../WindowFrame';
-import { onWindowClose } from '../../hooks/jotai';
-
 
 export default function Window({children, className, style, onClick, ...props}){
     const {
-        title,
-        id,
-        initialZIndex,
+        liftWindowToTop, hideWindow, unhideWindow, closeWindow,
+        parentId,
+        initialTitle,
         initialPosition,
         initialSize,
+        minSize,
         //
-        minSize, 
         classNames,
-        /* 'local', 'disable', minimiseFunction */
-        minimiseWindow, // function called on minimise, could be undefined  // minimiseFuncion, undefined, false || 'disable'
-        closeWindow, // setSate(RESET) run before closingWindow
-        moveWindow,
-        resizeWindow,
-        //!unused
-        maximiseWindow // function called on minimise, could be undefined 
+        onMinimise,
     } = props;
-    const  {
-        windowsRef,
-        closeWindow: closeThisWindow,
-        windowToTop,
-    } = useContext(WindowManagerContext);
-    const maxSize = {
-        width: '100%',
-        height: '100%'
-    }
-    // ? width could be the width of title instead of min width
-    const minimisedLocalSize = useMemo(()=>{ return { width: minSize.width, height: 18+2+2} }, [ minSize ]);
-    // refs - values
+
+    const { id, isWindowStatesReady, setWindowState, getWindowState, getWindowWindow }= useContext(WindowManagerContext);
+
     const offsetRef = useRef({top: 0, left: 0});
+    const windowPositionRef = useRef(initialPosition);
+    const windowSizeRef = useRef(initialSize);
 
-    const windowPrevPositionRef = useRef(undefined);
-    const windowPrevSizeRef = useRef(undefined);
-
-    const [ localZIndex, setLocalZIndex ] = useState(initialZIndex);
-    const [ minimisedLocally, setMinimisedLocally ] = useState(false);
-    const [ maximisedLocally, setMaximisedLocally ] = useState(false); 
-
-
+    if ( isWindowStatesReady(['gridSize','gridPosition'])  ) {
+        windowPositionRef.current = getWindowState('gridPosition');
+        windowSizeRef.current = getWindowState('gridSize');
+    } 
+    const [ isMaximisedLocally, setIsMaximisedLocally] = useState(
+        windowSizeRef.current.width === 'max' &&  windowSizeRef.current.height === 'max'
+    );
+    const [ isMinimisedLocally, setIsMinimisedLocally ] = useState(false);
     return (
         <WindowFrame
             className={className}
-            lockResize={ resizeWindow === 'disable' || minimisedLocally || maximisedLocally }
+            // lockResize={ resizeWindow === 'disable' || minimisedLocally || maximisedLocally }
             onMouseDown={()=>{
-                // TODO: check if zIndex is already top, if so do nothing;
-                setLocalZIndex( windowToTop(id) );
+                liftWindowToTop(id);
+                setWindowState('clicked minimise', 'clicked');
             }}
             style={{
-                zIndex: localZIndex,
-                // TODO: use other means to disable resizing, and show correct cursor
-                // ! resizing are disablled automatically via lockResize prop;
-                minWidth: minimisedLocally
+            //     // TODO: use other means to disable resizing, and show correct cursor
+            //     // ! resizing are disablled automatically via lockResize prop;
+                minWidth: isMinimisedLocally
                     ? `${minimisedLocalSize.width }px`
-                    : maximisedLocally
-                        ? maxSize.width
+                    : isMaximisedLocally
+                        ? '100%'
                         : `${minSize.width}px`
                 ,
-                minHeight: minimisedLocally
+                minHeight: isMinimisedLocally
                     ? `${minimisedLocalSize.height}px`
-                    :  maximisedLocally
-                        ? maxSize.height 
+                    :  isMaximisedLocally
+                        ? '100%'
                         : `${minSize.height}px`
-                ,
-                maxWidth: minimisedLocally
-                    ? `${minimisedLocalSize.width}px` 
-                    : maxSize.width,
-                maxHeight: minimisedLocally
-                    ? `${minimisedLocalSize.height}px` 
-                    : maxSize.height,
+            //     ,
+            //     maxWidth: minimisedLocally
+            //         ? `${minimisedLocalSize.width}px` 
+            //         : maxSize.width,
+            //     maxHeight: minimisedLocally
+            //         ? `${minimisedLocalSize.height}px` 
+            //         : maxSize.height,
             }}
-            initialPosition={initialPosition}
-            initialSize={initialSize}
+            initialPosition={windowPositionRef.current}
+            initialSize={windowSizeRef.current}
+            lockResize={isMaximisedLocally}
             renderContent={( useGridPosition, useGridSize) => {
+                
                 const [ gridPosition, setGridPosition ] = useGridPosition;
                 const [ gridSize, setGridSize ] = useGridSize;
 
                 // TODO: move all position and size changes here. 
                 useEffect(()=>{
-                    if ( maximisedLocally === false ) {
-                        windowsRef.current[id].props.initialPosition = gridPosition;
-                    }
-                },[gridPosition])
+                    setWindowState('gridSize', gridSize);
+                    
+                },[gridSize])
                 useEffect(()=>{
-                    if ( maximisedLocally === false ) {
-                        windowsRef.current[id].props.initialSize = gridSize;
-                    }
-                },[gridSize]);
+                    setWindowState('gridPosition', gridPosition);
 
+                },[gridPosition])
 
                 return (<>
                     <div className={`${css.top} rde-unselectable ${classNames?.top}`}>
                         <div className={`${css.top_left}`}>
-                            {/* local minimise here */}
-                            { minimiseWindow === undefined //&& !maximisedLocally
-                                ? <button
-                                    className='rde-unselectable'
-                                    onClick={()=>{
-                                        if (!minimisedLocally) {
-                                            windowPrevSizeRef.current = gridSize;
-                                            // TODO: save window location
-                                            setGridSize(minimisedLocalSize);
-                                        } else {
-                                            setGridSize(windowPrevSizeRef.current);
-                                        }
-                                        setMinimisedLocally(!minimisedLocally);
-                                    }}
-                                > 
-                                    {minimisedLocally
-                                        ? <span className={'rde-custom-font-symbols'}>{'='}</span>//<span className={'material-symbols-outlined rde-material-symbols-outlined'}>chevron_right</span>
-                                        : <span className={'rde-custom-font-symbols'}>{'>'}</span>//<span className={'material-symbols-outlined rde-material-symbols-outlined'}>drag_handle</span>
-                                    } 
-                                </button> 
-                                : null
-                            }
                         </div>
                         <div className={`${css.top_mid}`}
                             // * this disables drag when maximised.
-                            draggable={maximisedLocally || moveWindow === 'disable' ? false : true}
+                            draggable={isMaximisedLocally? false : true}
                             onDragStart={(e)=>{
                                 // console.log(e)
                                 // setIsDragging(true);
@@ -155,85 +116,40 @@ export default function Window({children, className, style, onClick, ...props}){
                                 e.preventDefault();
                             }}
                         >
-                            {title}
+                            {initialTitle}
                         </div>
                         <div className={`${css.top_right} ${classNames?.top_right}`}>
-                            {/* minimise according to parent */}
-                            { typeof minimiseWindow === 'function'
-                                ? <button
-                                    className='rde-unselectable'
-                                    onClick={()=>{
-                                        /**
-                                         * minimise to bar behaviour 
-                                         * not in useEffect becuase that would require another state to trigger useEffect. bundling both in one state is not as readable. 
-                                         * perhaps move useEffect of locally minimise into onClick.. but then the code not be as clean haha maybe i will change my mine.
-                                         */
-                                        // save the window size
-                                        // TODO
-                                        // ? should maximised then minimised window restore to the state prior to maximisation
-                                        // ?-cont. or should it be restored to the maximised state.
-                                        // ?-cont. restoring to the state prior to maximisation for now becuase it is easier to impelment, and it does not intefere with UX (max state will block content)
-                                        // * windowPrevSizeRef not used here because Window gets unmounted&remounted, so we need to modify the globalState (context)
-                                        if ( maximiseWindow ) {
-                                            // save the window size
-                                            // TODO: monitor fullscreen
-                                            const { width, height} = maximiseWindow();
-                                        } else {
-                                            if (!maximisedLocally) {
-                                                windowsRef.current[id].props.initialSize = gridSize;
-                                                windowsRef.current[id].props.initialPosition = gridPosition;
-                                            } else {
-                                                windowsRef.current[id].props.initialSize = windowPrevSizeRef.current;
-                                                windowsRef.current[id].props.initialPosition = windowPrevPositionRef.current;
-                                            }
-                                        }
-                                        minimiseWindow(id);
-                                    }}
-                                > 
-                                    <span className={'rde-custom-font-symbols'}>-</span>
-                                </button> 
-                                : minimiseWindow === 'disable' || minimiseWindow === undefined
-                                    ? null
-                                    : null
-                            }
-                            {minimisedLocally || minimiseWindow === 'disable'
-                                ? null
-                                : <button
-                                    className='rde-unselectable'
-                                    onClick={()=>{
-                                        if ( maximiseWindow ) {
-                                            // save the window size
-                                            // TODO: monitor fullscreen
-                                            const { width, height} = maximiseWindow();
-                                        } else {
-                                            if (!maximisedLocally) {
-                                                windowPrevSizeRef.current = gridSize;
-                                                windowPrevPositionRef.current = gridPosition;
-                                                setGridPosition({left:0, top:0});
-                                                setGridSize(maxSize);
-                                            } else {
-                                                setGridPosition(windowPrevPositionRef.current)
-                                                setGridSize(windowPrevSizeRef.current);
-                                            }
-                                            setMaximisedLocally(!maximisedLocally);
-                                        }
-                                    }}
-                                >
-                                    <span className={'material-symbols-outlined rde-material-symbols-outlined'}>{maximisedLocally? 'fullscreen_exit' : 'fullscreen'}</span>
-                                </button>
-                            }
-                            { closeWindow === 'disable' 
-                                ? null
-                                : <button
-                                    className='rde-unselectable'
-                                    onClick={()=>{
-                                        closeWindow();
-                                        closeThisWindow(id);
-                                    }}
-                                >
-                                    <span className={'material-symbols-outlined rde-material-symbols-outlined'}>close</span>
-                                </button>
-                            }
+                            <button className='rde-unselectable'
+                                onClick={()=>{
+                                    hideWindow(id);
+                                }}
+                            > 
+                                <span className={'rde-custom-font-symbols'}>-</span>
+                            </button> 
+                            <button className='rde-unselectable'
+                                onClick={()=>{
+                                    if ( isMaximisedLocally ){
+                                        setGridPosition( getWindowState('gridPositionBeforeMaximisation') );
+                                        setGridSize( getWindowState('gridSizeBeforeMaximisation') );
+                                        setIsMaximisedLocally(false);
+                                    } else {
+                                        setWindowState('gridSizeBeforeMaximisation', gridSize);
+                                        setWindowState('gridPositionBeforeMaximisation', gridPosition);
+                                        setGridPosition({left:0, top:0});
+                                        setGridSize({ width: 'max', height: 'max'});
+                                        setIsMaximisedLocally(true);
+                                    }
+                                }}
+                            > 
+                                <span className={'material-symbols-outlined rde-material-symbols-outlined'}>{ isMaximisedLocally ? 'fullscreen_exit' : 'fullscreen'}</span>
+                            </button> 
+                            <button className='rde-unselectable'
+                                onClick={()=>{
+                                    closeWindow(id);
+                                }}
+                            > 
+                                <span className={'material-symbols-outlined rde-material-symbols-outlined'}>{'close'}</span>
+                            </button> 
                         </div>
                     </div>
                     <div className={css.mid}>
@@ -247,8 +163,8 @@ export default function Window({children, className, style, onClick, ...props}){
 
 Window.defaultProps = {
     minSize: {
-        width: 100,
-        height: 100
+        width: 300,
+        height: 200
     },
     // maxSize: {
     //     width: 'calc( 100% - 4px)',
@@ -261,7 +177,9 @@ Window.defaultProps = {
 //         <div className={css.mid_body} {...props}>
 //             { children }
 //         </div>
-//     )
+//  
 // }
 
 // Window.Body = WindowBody;
+
+// function TopBarMid

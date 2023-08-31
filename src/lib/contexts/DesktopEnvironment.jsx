@@ -1,14 +1,9 @@
-import WindowManagerContextProvider, { WindowManagerContext } from 'react-window-manager';
-import { createContext, useState, useEffect, useRef } from "react";
+import { createContext, useEffect } from "react";
 import { htmlToElement } from "../utils";
 
-const DesktopEnvironmentContext = createContext(null);
-export {
-    WindowManagerContext,
-    DesktopEnvironmentContext
-}
+export const DesktopEnvironmentContext = createContext({components:{}});
 
-export default function DesktopEnvironmentContextProvider({children}){
+export default function DesktopEnvironmentProvider({value, children}){
     // create and empty img element for drag img
     //TODO: import '@/node_modules/react-desktop-environment/dist/style.css';
     useEffect(()=>{
@@ -25,8 +20,16 @@ export default function DesktopEnvironmentContextProvider({children}){
         }
         // * https://stackoverflow.com/questions/524696/how-to-create-a-style-tag-with-javascript
         const css = `
+            /* google matirial icon font */
             @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
-
+            /* chinese font  */
+            @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@100;300;400;500;700;900&display=swap');
+            /*
+            google fonts inconsolata 
+            font-family: 'Inconsolata', monospace; 
+            */
+            @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@200;300;400;500;600;700;800;900&display=swap');
+            
             .rde-display-none { 
                 display: none !important; 
             }
@@ -59,22 +62,9 @@ export default function DesktopEnvironmentContextProvider({children}){
         head.appendChild(style);
     },[]);
 
-    const value = null;
-
-
     return(
-        <WindowManagerContextProvider>
-            <DesktopEnvironmentContext.Provider value={value}>
-                {children}
-            </DesktopEnvironmentContext.Provider>
-        </WindowManagerContextProvider>
+        <DesktopEnvironmentContext.Provider value={value}>
+            {children}
+        </DesktopEnvironmentContext.Provider>
     )
 }
-
-/**
- * <DesktopEnviornmentProvider>
- *     <WindowManagerContextProvider>
- *          <App/>
- *     </WindowManagerContextProvider>
- * </DesktopEnviornmentProvider>
- */

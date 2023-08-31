@@ -1,6 +1,6 @@
 {
     "name": "react-desktop-environment",
-    "version": "0.0.29",
+    "version": "0.1.2",
     "description": "",
     "license": "ISC",
     "author": "",
@@ -52,6 +52,6 @@
     },
     "dependencies": {
         "jotai": "^2.1.1",
-        "react-window-manager": "^0.0.33"
+        "react-window-manager": "^0.1.2"
     }
 }

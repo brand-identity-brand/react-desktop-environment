@@ -7,8 +7,8 @@
 
 
     display: grid;
-    grid-template-columns: 2px auto 2px;
-    grid-template-rows: 2px auto 2px;
+    grid-template-columns: 2px 2px auto 2px 2px;
+    grid-template-rows: 2px 2px auto 2px 2px;
     /* TODO: this is for usability
     grid-template-columns: 2px 2px auto 2px 2px;
     grid-template-rows: 2px 2px auto 2px 2px; 
@@ -26,32 +26,49 @@
     overflow: hidden;
 }
 
-.t{
+.h12{
     grid-row-start: 1;
     grid-row-end: 2;
 }
-.m{
+.h23{
     grid-row-start: 2;
     grid-row-end: 3;
 }
-.b{
+.h34{
     grid-row-start: 3;
     grid-row-end: 4;
 }
+.h25{
+    grid-row-start: 2;
+    grid-row-end: 5;
+}
+.h45{
+    grid-row-start: 4;
+    grid-row-end: 5;
+}
+.h56{
+    grid-row-start: 5;
+    grid-row-end: 6;
+}
 
-.l{
+.v12{
     grid-column-start: 1;
     grid-column-end: 2;
 
 }
-.c{
+.v25{
     grid-column-start: 2;
-    grid-column-end: 3;
+    grid-column-end: 5;
 
 }
-.r{
+.v34{
     grid-column-start: 3;
     grid-column-end: 4;
+
+}
+.v56{
+    grid-column-start: 5;
+    grid-column-end: 6;
 }
 .gridMax{
     width: 100%;

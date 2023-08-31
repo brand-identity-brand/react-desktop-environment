@@ -1,7 +1,6 @@
 /* StartBar */
 import css from './index.module.css';
 import { useState } from 'react';
-import { default as reactLogo }  from './public/ReactLogo.svg';
 
 export function Bar({children, className = '', style = {}, ...props}){
   const {
@@ -31,7 +30,7 @@ export function Bar({children, className = '', style = {}, ...props}){
   
 export function Menu({children, className = '', style = {}, ...props}){
   const {
-    logo = <img src={reactLogo} />,
+    logo = <span className={'material-symbols-outlined '}>{'deployed_code'}</span>,
     className_startButton = '',
     className_startButton_isMenuOpened_true = css.startButton_isMenuOpened_true
   } = props;
@@ -107,3 +106,11 @@ function Minimised({style,className,onClick,children,...props}){
   )
 }
 Windows.Minimised = Minimised;
+
+// export default {
+//     Bar,
+//     Menu,
+//     Icons,
+//     Windows,
+//     Footer
+// }

@@ -1,50 +1,42 @@
 import css from './index.module.css';
 import { useContext, useState, useEffect, useRef, cloneElement, forwardRef } from 'react';
-import { WindowManagerContext } from '../../contexts/DesktopEnvironmentContextProvider';
-import { styles } from '../../utils';
-// import { Window } from './lib';
+import { WindowManagerRegistryContext, WindowManagerContext, WindowManagerProvider } from 'react-window-manager';
+import { DesktopEnvironmentContext } from '../../contexts/DesktopEnvironment';
+
+// import { Provider as JotaiProvider, getDefaultStore } from "jotai";
+
 // TODO: maybe remove forwardRef Wapper.
-export const Desktop = forwardRef( function Desktop({children, className, style, ...props}, ref){
-    const { 
-        id = 0,
-        minimisedWindowIds = []
-    } = props;
-
-    const  {
-        helpers,
-        windowsRef,
-        windowsTree,
-        renderWindow,
-        getWindowsByParentId
-    } = useContext(WindowManagerContext);
-   
-
-    const windowIds = Object.keys( getWindowsByParentId(id) );
-    // console.log('Desktop.prop.id', windowIds)
-    const filteredWindowIds = windowIds.filter( windowId => !minimisedWindowIds.includes(windowId) );
+export default function Desktop({children, className, style}){
+    const  { getWindowIds } = useContext(WindowManagerRegistryContext);
+    const  { components } = useContext(DesktopEnvironmentContext);
+    const windowSpecs = getWindowIds();
+    const { activeWindows, liftWindowToTop, hideWindow, unhideWindow, closeWindow }= useContext(WindowManagerContext);
 
     // const masterRef = useRef();
 
     // const maxZIndex = 2147483647;
 
-    return (
-        <div
-            ref={ref}
-            className={styles(css.master, className)}
-            style={style}
-        >
 
-            { filteredWindowIds.map( renderWindow ) }
+    return (
+        <div className={`${css.master} ${className}`} style={style}>
+
+            { activeWindows.map( (id)=>{ 
+                const { Component: componentTag, props } = windowSpecs[id];
+                const Component = components[componentTag];
+                // compare props and states, if there are same keys prioritise state
+                return ( 
+                    <WindowManagerProvider id={id} key={id}>
+                        <Component {...{...props, liftWindowToTop, hideWindow, unhideWindow, closeWindow}}/>
+                    </WindowManagerProvider>
+                )
+            })}
             {
                 // ! children is either reactElement or reactElement
             }
             {children}
-
         </div>
     )
-});
-
-export default Desktop;
+};
 
 
 /**

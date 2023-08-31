@@ -2,7 +2,7 @@
  * this component is the dragable and resizable frame the is being used for Window components.
  */
 import css from './index.module.css';
-import {styles} from '/src/lib/utils';
+import {styles} from '../../utils';
 import { useRef, useEffect, useState } from 'react';
 
 export default function WindowFrame({children, className, style, onMouseDown, ...props}){
@@ -28,8 +28,8 @@ export default function WindowFrame({children, className, style, onMouseDown, ..
                 ...style,
                 top: `${gridPosition.top}px`,
                 left: `${gridPosition.left}px`,
-                width: `${gridSize.width}px`,
-                height: `${gridSize.height}px`,
+                width: gridSize.width==='max'? '100%' : `${gridSize.width}px`,
+                height: gridSize.height==='max'? '100%' : `${gridSize.height}px`,
             }}
             onMouseDown={onMouseDown}
         >
@@ -42,9 +42,24 @@ export default function WindowFrame({children, className, style, onMouseDown, ..
             />
             <Area 
                 lockResize={lockResize}
+                area={'nwn'}
+                useGridPosition={[ gridPosition, setGridPosition ]}
+                useGridSize={[ gridSize, setGridSize ]}
+                onResize={()=>{}}
+            />
+            <Area 
+                lockResize={lockResize}
+                area={'nww'}
+                useGridPosition={[ gridPosition, setGridPosition ]}
+                useGridSize={[ gridSize, setGridSize ]}
+                onResize={()=>{}}
+            />
+            <Area 
+                lockResize={lockResize}
                 area={'n'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
+                // className={css.horizontalSubGrid}
             />
             <Area 
                 lockResize={lockResize}
@@ -54,10 +69,24 @@ export default function WindowFrame({children, className, style, onMouseDown, ..
             />
             <Area 
                 lockResize={lockResize}
-                area={'w'}
+                area={'nen'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
             />
+            <Area 
+                lockResize={lockResize}
+                area={'nee'}
+                useGridPosition={[ gridPosition, setGridPosition ]}
+                useGridSize={[ gridSize, setGridSize ]}
+            />
+            <Area 
+                lockResize={lockResize}
+                area={'w'}
+                useGridPosition={[ gridPosition, setGridPosition ]}
+                useGridSize={[ gridSize, setGridSize ]}
+                // className={css.verticalSubGrid}
+            >
+            </Area>
             <div
                 className={grid['body'].className}
             >
@@ -68,6 +97,7 @@ export default function WindowFrame({children, className, style, onMouseDown, ..
                 area={'e'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
+                // className={css.verticalSubGrid}
             />
             <Area 
                 lockResize={lockResize}
@@ -77,13 +107,38 @@ export default function WindowFrame({children, className, style, onMouseDown, ..
             />
             <Area 
                 lockResize={lockResize}
-                area={'s'}
+                area={'sws'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
             />
             <Area 
                 lockResize={lockResize}
+                area={'sww'}
+                useGridPosition={[ gridPosition, setGridPosition ]}
+                useGridSize={[ gridSize, setGridSize ]}
+            />
+            <Area 
+                lockResize={lockResize}
+                area={'s'}
+                useGridPosition={[ gridPosition, setGridPosition ]}
+                useGridSize={[ gridSize, setGridSize ]}
+                // className={css.horizontalSubGrid}
+            />
+            <Area 
+                lockResize={lockResize}
                 area={'se'}
+                useGridPosition={[ gridPosition, setGridPosition ]}
+                useGridSize={[ gridSize, setGridSize ]}
+            />
+            <Area 
+                lockResize={lockResize}
+                area={'ses'}
+                useGridPosition={[ gridPosition, setGridPosition ]}
+                useGridSize={[ gridSize, setGridSize ]}
+            />
+            <Area 
+                lockResize={lockResize}
+                area={'see'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
             />
@@ -94,14 +149,14 @@ export default function WindowFrame({children, className, style, onMouseDown, ..
 WindowFrame.defaultProps = {
     className: '',
     style: {},
-    initialPosition: {
-        left: 0,
-        top: 0
-    },
-    initialSize: {
-        width: 100,
-        height: 100
-    }
+    // initialPosition: {
+    //     left: 10,
+    //     top: 10
+    // },
+    // initialSize: {
+    //     width: 100,
+    //     height: 100
+    // }
 }
 
 function Area({className, style, children, ...props}) {
@@ -182,7 +237,59 @@ function Area({className, style, children, ...props}) {
 // * USE getBoundingClientRect() e.g. e.target.getBoundingClientRect().left
 const grid={
     'nw': {
-        className: styles(css.t, css.l, css.gridMax, css['nwse-resize']),
+        className: styles(css.h12, css.v12, css.gridMax, css['nwse-resize']),
+        calculatePosition: ( e,  onDragStartMousePosition, onDragStartGridPosition )=>{ //gridPosition
+            const positionChange = {
+                left: e.clientX - onDragStartMousePosition.left, 
+                top:  e.clientY - onDragStartMousePosition.top
+            }
+            return {    
+                left: onDragStartGridPosition.left + positionChange.left, 
+                top: onDragStartGridPosition.top + positionChange.top
+            }
+        },
+        
+        calculateSize: ( e, onDragStartGridSize, onDragStartGridPositionRelativeToViewport )=>{
+            // onDragMousePosition almost=== gridPosition
+            const sizeChange = {
+                width: onDragStartGridPositionRelativeToViewport.left - e.clientX, 
+                height: onDragStartGridPositionRelativeToViewport.top - e.clientY
+            }
+
+            return {
+                width: onDragStartGridSize.width + sizeChange.width, //gridPosition.left - ( e.clientX + onDragMousePosition.left ) + gridSize.width, 
+                height: onDragStartGridSize.height + sizeChange.height //gridPosition.top - ( e.clientY + onDragMousePosition.top ) + gridSize.height
+            }
+        }
+    },
+    'nwn': {
+        className: styles(css.h12, css.v23, css.gridMax, css['nwse-resize']),
+        calculatePosition: ( e,  onDragStartMousePosition, onDragStartGridPosition )=>{ //gridPosition
+            const positionChange = {
+                left: e.clientX - onDragStartMousePosition.left, 
+                top:  e.clientY - onDragStartMousePosition.top
+            }
+            return {    
+                left: onDragStartGridPosition.left + positionChange.left, 
+                top: onDragStartGridPosition.top + positionChange.top
+            }
+        },
+        
+        calculateSize: ( e, onDragStartGridSize, onDragStartGridPositionRelativeToViewport )=>{
+            // onDragMousePosition almost=== gridPosition
+            const sizeChange = {
+                width: onDragStartGridPositionRelativeToViewport.left - e.clientX, 
+                height: onDragStartGridPositionRelativeToViewport.top - e.clientY
+            }
+
+            return {
+                width: onDragStartGridSize.width + sizeChange.width, //gridPosition.left - ( e.clientX + onDragMousePosition.left ) + gridSize.width, 
+                height: onDragStartGridSize.height + sizeChange.height //gridPosition.top - ( e.clientY + onDragMousePosition.top ) + gridSize.height
+            }
+        }
+    },
+    'nww': {
+        className: styles(css.h23, css.v12, css.gridMax, css['nwse-resize']),
         calculatePosition: ( e,  onDragStartMousePosition, onDragStartGridPosition )=>{ //gridPosition
             const positionChange = {
                 left: e.clientX - onDragStartMousePosition.left, 
@@ -208,7 +315,7 @@ const grid={
         }
     },
     'n': {
-       className: styles(css.t, css.c, css.gridMax, css['ns-resize']),
+       className: styles(css.h12, css.v34, css.gridMax, css['ns-resize']),
        calculatePosition: ( e, onDragStartMousePosition, onDragStartGridPosition )=>{
             const positionChange = {
                 left: 0, //e.clientX - onDragStartMousePosition.left, 
@@ -231,7 +338,53 @@ const grid={
         }
     },
     'ne': {
-        className: styles(css.t, css.r, css.gridMax, css['nesw-resize']),
+        className: styles(css.h12, css.v56, css.gridMax, css['nesw-resize']),
+        calculatePosition: ( e, onDragStartMousePosition, onDragStartGridPosition )=>{
+            const positionChange = {
+                left: 0,
+                top:  e.clientY - onDragStartMousePosition.top
+            }
+            return {    
+                left: onDragStartGridPosition.left + positionChange.left, 
+                top: onDragStartGridPosition.top + positionChange.top
+            }
+        },
+        calculateSize: ( e, onDragStartGridSize, onDragStartGridPositionRelativeToViewport )=>{
+            const sizeChange = {
+                width: e.clientX - onDragStartGridPositionRelativeToViewport.left, 
+                height: onDragStartGridPositionRelativeToViewport.top - e.clientY
+            }
+            return {
+                width: onDragStartGridSize.width + sizeChange.width,
+                height: onDragStartGridSize.height + sizeChange.height
+            }
+        }
+    },
+    'nen': {
+        className: styles(css.h12, css.v45, css.gridMax, css['nesw-resize']),
+        calculatePosition: ( e, onDragStartMousePosition, onDragStartGridPosition )=>{
+            const positionChange = {
+                left: 0,
+                top:  e.clientY - onDragStartMousePosition.top
+            }
+            return {    
+                left: onDragStartGridPosition.left + positionChange.left, 
+                top: onDragStartGridPosition.top + positionChange.top
+            }
+        },
+        calculateSize: ( e, onDragStartGridSize, onDragStartGridPositionRelativeToViewport )=>{
+            const sizeChange = {
+                width: e.clientX - onDragStartGridPositionRelativeToViewport.left, 
+                height: onDragStartGridPositionRelativeToViewport.top - e.clientY
+            }
+            return {
+                width: onDragStartGridSize.width + sizeChange.width,
+                height: onDragStartGridSize.height + sizeChange.height
+            }
+        }
+    },
+    'nee': {
+        className: styles(css.h23, css.v56, css.gridMax, css['nesw-resize']),
         calculatePosition: ( e, onDragStartMousePosition, onDragStartGridPosition )=>{
             const positionChange = {
                 left: 0,
@@ -254,7 +407,7 @@ const grid={
         }
     },
     'e': {
-        className: styles(css.m, css.r, css.gridMax, css['ew-resize']),
+        className: styles(css.h34, css.v56, css.gridMax, css['ew-resize']),
         calculatePosition: ( e, onDragStartPosition, onDragStartGridPosition )=>{
             const positionChange = {
                 left: 0, //e.clientX - onDragStartPosition.left, 
@@ -277,7 +430,53 @@ const grid={
         }
     },
     'se': {
-        className: styles(css.b, css.r, css.gridMax, css['nwse-resize']),
+        className: styles(css.h56, css.v56, css.gridMax, css['nwse-resize']),
+        calculatePosition: ( e, onDragStartPosition, onDragStartGridPosition )=>{
+            const positionChange = {
+                left: 0,
+                top:  0
+            }
+            return {    
+                left: onDragStartGridPosition.left + positionChange.left, 
+                top: onDragStartGridPosition.top + positionChange.top
+            }
+        },
+        calculateSize: ( e, onDragStartGridSize,onDragStartGridPositionRelativeToViewport )=>{
+            const sizeChange = {
+                width: e.clientX - onDragStartGridPositionRelativeToViewport.left, 
+                height: e.clientY - onDragStartGridPositionRelativeToViewport.top, 
+            }
+            return {
+                width: onDragStartGridSize.width + sizeChange.width,
+                height: onDragStartGridSize.height + sizeChange.height
+            }
+        }
+    },
+    'ses': {
+        className: styles(css.h56, css.v45, css.gridMax, css['nwse-resize']),
+        calculatePosition: ( e, onDragStartPosition, onDragStartGridPosition )=>{
+            const positionChange = {
+                left: 0,
+                top:  0
+            }
+            return {    
+                left: onDragStartGridPosition.left + positionChange.left, 
+                top: onDragStartGridPosition.top + positionChange.top
+            }
+        },
+        calculateSize: ( e, onDragStartGridSize,onDragStartGridPositionRelativeToViewport )=>{
+            const sizeChange = {
+                width: e.clientX - onDragStartGridPositionRelativeToViewport.left, 
+                height: e.clientY - onDragStartGridPositionRelativeToViewport.top, 
+            }
+            return {
+                width: onDragStartGridSize.width + sizeChange.width,
+                height: onDragStartGridSize.height + sizeChange.height
+            }
+        }
+    },
+    'see': {
+        className: styles(css.h45, css.v56, css.gridMax, css['nwse-resize']),
         calculatePosition: ( e, onDragStartPosition, onDragStartGridPosition )=>{
             const positionChange = {
                 left: 0,
@@ -300,7 +499,7 @@ const grid={
         }
     },
     's': {
-        className: styles(css.b, css.c, css.gridMax, css['ns-resize']),
+        className: styles(css.h56, css.v34, css.gridMax, css['ns-resize']),
         calculatePosition: ( e, onDragStartPosition, onDragStartGridPosition )=>{
             const positionChange = {
                 left: 0,
@@ -325,7 +524,53 @@ const grid={
         }
     },
     'sw': {
-        className: styles(css.b, css.l, css.gridMax, css['nesw-resize']),
+        className: styles(css.h56, css.v12, css.gridMax, css['nesw-resize']),
+        calculatePosition: ( e, onDragStartMousePosition, onDragStartGridPosition )=>{
+            const positionChange = {
+                left: e.clientX - onDragStartMousePosition.left, 
+                top:  0
+            }
+            return {    
+                left: onDragStartGridPosition.left + positionChange.left, 
+                top: onDragStartGridPosition.top + positionChange.top
+            }
+        },
+        calculateSize: ( e, onDragStartGridSize, onDragStartGridPositionRelativeToViewport )=>{
+            const sizeChange = {
+                width: onDragStartGridPositionRelativeToViewport.left - e.clientX, 
+                height: e.clientY - onDragStartGridPositionRelativeToViewport.top, 
+            }
+            return {
+                width: onDragStartGridSize.width + sizeChange.width,
+                height: onDragStartGridSize.height + sizeChange.height
+            }
+        }
+    },
+    'sws': {
+        className: styles(css.h56, css.v23, css.gridMax, css['nesw-resize']),
+        calculatePosition: ( e, onDragStartMousePosition, onDragStartGridPosition )=>{
+            const positionChange = {
+                left: e.clientX - onDragStartMousePosition.left, 
+                top:  0
+            }
+            return {    
+                left: onDragStartGridPosition.left + positionChange.left, 
+                top: onDragStartGridPosition.top + positionChange.top
+            }
+        },
+        calculateSize: ( e, onDragStartGridSize, onDragStartGridPositionRelativeToViewport )=>{
+            const sizeChange = {
+                width: onDragStartGridPositionRelativeToViewport.left - e.clientX, 
+                height: e.clientY - onDragStartGridPositionRelativeToViewport.top, 
+            }
+            return {
+                width: onDragStartGridSize.width + sizeChange.width,
+                height: onDragStartGridSize.height + sizeChange.height
+            }
+        }
+    },
+    'sww': {
+        className: styles(css.h45, css.v12, css.gridMax, css['nesw-resize']),
         calculatePosition: ( e, onDragStartMousePosition, onDragStartGridPosition )=>{
             const positionChange = {
                 left: e.clientX - onDragStartMousePosition.left, 
@@ -348,7 +593,7 @@ const grid={
         }
     },
     'w': {
-        className: styles(css.m, css.l, css.gridMax, css['ew-resize']),
+        className: styles(css.h34, css.v12, css.gridMax, css['ew-resize']),
         calculatePosition: ( e, onDragStartMousePosition, onDragStartGridPosition )=>{
             const positionChange = {
                 left: e.clientX - onDragStartMousePosition.left, 
@@ -371,7 +616,7 @@ const grid={
         }
     },
     'body': {
-        className: styles(css.m, css.c, css.gridMaxBody),
+        className: styles(css.h25, css.v25, css.gridMaxBody),
     },
     
 
