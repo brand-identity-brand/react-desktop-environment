@@ -1,39 +1,46 @@
 import css from './index.module.css';
-import { useContext, useState, useEffect, useRef, cloneElement, forwardRef } from 'react';
+import { useContext } from 'react';
 import { WindowManagerRegistryContext, WindowManagerContext, WindowManagerProvider } from 'react-window-manager';
 import { DesktopEnvironmentContext } from '../../contexts/DesktopEnvironment';
+import Window from '../Window';
 
 // import { Provider as JotaiProvider, getDefaultStore } from "jotai";
 
 // TODO: maybe remove forwardRef Wapper.
+// ! children has to be reactElement
 export default function Desktop({children, className, style}){
-    const  { getWindowIds } = useContext(WindowManagerRegistryContext);
+    const  { getAllWindowSpecs } = useContext(WindowManagerRegistryContext);
     const  { components } = useContext(DesktopEnvironmentContext);
-    const windowSpecs = getWindowIds();
-    const { activeWindows, liftWindowToTop, hideWindow, unhideWindow, closeWindow }= useContext(WindowManagerContext);
 
+    const { windows, liftWindowToTop, hideWindow, closeWindow }= useContext(WindowManagerContext);
+
+    const windowSpecs = getAllWindowSpecs();
     // const masterRef = useRef();
 
     // const maxZIndex = 2147483647;
-
-
+console.log(windowSpecs)
     return (
         <div className={`${css.master} ${className}`} style={style}>
+            {children}
+            { windows.active.map( (childWindowId)=>{ 
 
-            { activeWindows.map( (id)=>{ 
-                const { Component: componentTag, props } = windowSpecs[id];
+                const { Component: componentTag, props } = windowSpecs[childWindowId];
                 const Component = components[componentTag];
                 // compare props and states, if there are same keys prioritise state
+                const windowControllerProps = {
+                    liftWindowToTop: ()=>{liftWindowToTop(childWindowId)}, 
+                    hideWindow: ()=>{hideWindow(childWindowId)}, 
+                    closeWindow: ()=>{closeWindow(childWindowId, 'active')},
+                }
+                const completeProps = { ...props, ...windowControllerProps}
                 return ( 
-                    <WindowManagerProvider id={id} key={id}>
-                        <Component {...{...props, liftWindowToTop, hideWindow, unhideWindow, closeWindow}}/>
+                    <WindowManagerProvider id={childWindowId} key={childWindowId}>
+                        <Window {...completeProps}>
+                            <Component {...completeProps}/>
+                        </Window>
                     </WindowManagerProvider>
                 )
             })}
-            {
-                // ! children is either reactElement or reactElement
-            }
-            {children}
         </div>
     )
 };

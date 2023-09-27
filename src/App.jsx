@@ -1,34 +1,38 @@
 import { useContext, useState, useEffect, useRef } from 'react';
 import { WindowManagerRegistryContext, WindowManagerContext, WindowManagerProvider } from 'react-window-manager';
-import { Desktop, Start } from './lib';
+import { Desktop, Start, Window } from './lib';
 import Inception from './exampleComponents/Inception';
+import WindowWithContext from './lib/components/Window';
 
 function AppFragment() {
-    
-    const { getNextIdCounter, initWindow, registerWindow, hideWindow, unhideWindow, closeWindow, setData,...windows} = useContext(WindowManagerContext);
+    const  { initWindow, getAllWindowSpecs } = useContext(WindowManagerRegistryContext);
 
-    const [ idToAction, setIdToAction] = useState(0);
+    const { currentWindowId, registerWindow, hideWindow, unhideWindow, closeWindow, windows} = useContext(WindowManagerContext);
+
+    const [ idToAction, setIdToAction] = useState('0');
 
     return (<>
         <Desktop style={{ width: '100vw', height: 'calc( 100vh - 30px - 2px )', backgroundColor: 'white'}}>
+            {/* <WindowWithContext />
+            <Window /> */}
             <input onChange={(e)=>{ setIdToAction(e.target.value) }}></input><br/>
             <button onClick={()=>{
-                const id = idToAction? idToAction : getNextIdCounter();
-                initWindow(id,{
+                initWindow(idToAction,{
                     Component: Inception.name,
                     props: {
-                        initialTitle : `title: ${id}`,
+                        initialTitle : `title: ${idToAction}`,
                         initialPosition: {
-                            left: 10,
+                            left: 500,
                             top: 10
                         },
                         initialSize: {
                             width: 300,
                             height: 200
                         }
-                    }
+                    },
                 });
-                registerWindow(id); 
+                registerWindow(idToAction); 
+                // console.log(getAllWindowSpecs())
             }}> initWindow </button> <br/>
 
 
@@ -36,9 +40,9 @@ function AppFragment() {
             <button onClick={()=>{ unhideWindow(idToAction) }}> unhideWindow </button><br/>
             <button onClick={()=>{ closeWindow(idToAction) }}> closeWindow </button><br/>
             
-            { `active: ${ JSON.stringify(windows.activeWindows) }`}<br/>
-            { `hidden: ${ JSON.stringify(windows.hiddenWindows) }`}<br/>
-            { `closed: ${ JSON.stringify(windows.closedWindows) }`}<br/>
+            { `active: ${ JSON.stringify(windows.active) }`}<br/>
+            { `hidden: ${ JSON.stringify(windows.hidden) }`}<br/>
+            { `closed: ${ JSON.stringify(windows.closed) }`}<br/>
 
         </Desktop>
         < Start.Bar>
@@ -50,7 +54,7 @@ function AppFragment() {
                 <div>{'||'}</div>
             </ Start.Icons>
             <Start.Windows>
-                {windows.hiddenWindows.map( id => {
+                {windows.hidden.map( id => {
                     return (
                         <button key={id}
                             onClick={()=>{unhideWindow(id)}}
@@ -70,6 +74,7 @@ function AppFragment() {
 export default function App({props}){
     return (
         <WindowManagerProvider id={'/index'}>
+            
             <AppFragment {...props} />
         </WindowManagerProvider>
     )

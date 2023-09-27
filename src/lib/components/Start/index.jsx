@@ -41,6 +41,7 @@ export function Menu({children, className = '', style = {}, ...props}){
       ? <div
           className={css.menu}
         >
+          {/** use onMouseDown for children instead of onClick */}
           {children}
         </div>
       : null

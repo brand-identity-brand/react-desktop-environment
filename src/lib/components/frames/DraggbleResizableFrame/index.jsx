@@ -2,10 +2,10 @@
  * this component is the dragable and resizable frame the is being used for Window components.
  */
 import css from './index.module.css';
-import {styles} from '../../utils';
+import {styles} from '../../../utils';
 import { useRef, useEffect, useState } from 'react';
 
-export default function WindowFrame({children, className, style, onMouseDown, ...props}){
+export default function DraggbleResizableFrame({children, className, style, onMouseDown, ...props}){
     const {
         lockResize, //bool
         initialPosition,
@@ -146,7 +146,7 @@ export default function WindowFrame({children, className, style, onMouseDown, ..
     )
 };
 
-WindowFrame.defaultProps = {
+DraggbleResizableFrame.defaultProps = {
     className: '',
     style: {},
     // initialPosition: {
@@ -183,7 +183,6 @@ function Area({className, style, children, ...props}) {
             //
             draggable={ lockResize? false : true }
             onDragStart={(e)=>{
-
                     // initialise mouse position offset
                     // setIsDragging(true);
                     // ! mousePositionOffsetRef.current = {
@@ -223,6 +222,15 @@ function Area({className, style, children, ...props}) {
                     }
                 }
             }
+            // below deoesnt affect behaviour, but performance increases
+            onDragLeave={(e)=>{
+                // prevent dragImage flyover when dropping
+                e.preventDefault();
+            }}
+            onDragOver={(e)=>{
+                // prevent dragImage flyover when dropping
+                e.preventDefault();
+            }}
         >
             {children}
         </div>

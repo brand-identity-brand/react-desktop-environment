@@ -1,14 +1,17 @@
+import WindowFrame from "./components/frames/WindowFrame";
+import DraggbleResizableFrame from "./components/frames/DraggbleResizableFrame";
+
 import Desktop from './components/Desktop';
-import Window from "./components/Window";
-import WindowFrame from "./components/WindowFrame";
 import * as Start from "./components/Start";
 import DesktopEnvironmentProvider, { DesktopEnvironmentContext } from "./contexts/DesktopEnvironment";
-
+import Window
+ from './components/Window';
 export default DesktopEnvironmentProvider;
 export {
-    Desktop,
     Window,
+    Desktop,
     WindowFrame,
+    DraggbleResizableFrame,
     Start,
     DesktopEnvironmentContext
 }

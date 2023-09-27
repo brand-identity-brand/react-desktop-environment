@@ -1,9 +1,9 @@
-import { createContext, useEffect } from "react";
+import { createContext, useEffect, useRef } from "react";
 import { htmlToElement } from "../utils";
 
 export const DesktopEnvironmentContext = createContext({components:{}});
 
-export default function DesktopEnvironmentProvider({value, children}){
+export default function DesktopEnvironmentProvider({components, children}){
     // create and empty img element for drag img
     //TODO: import '@/node_modules/react-desktop-environment/dist/style.css';
     useEffect(()=>{
@@ -62,6 +62,9 @@ export default function DesktopEnvironmentProvider({value, children}){
         head.appendChild(style);
     },[]);
 
+    const value = { 
+        components
+    }
     return(
         <DesktopEnvironmentContext.Provider value={value}>
             {children}
