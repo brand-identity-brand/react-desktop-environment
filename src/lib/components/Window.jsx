@@ -1,6 +1,6 @@
 import WindowFrame from "./frames/WindowFrame";
 import { useContext } from "react";
-import { WindowManagerContext } from 'react-window-manager';
+import { WindowManagerContext, WindowManagerRegistryContext } from 'react-window-manager';
 
 export default function Window({
         liftWindowToTop, hideWindow, closeWindow, //currentWindowId, useWmState,
@@ -8,12 +8,22 @@ export default function Window({
         ...props
     }){
 
-    const { currentWindowId, useWmState }= useContext(WindowManagerContext);
+    const {
+        currentWindowId,
+        setWindowState,
+        getWindowState
+    }= useContext(WindowManagerContext);
 
-    const [ gridPosition, setGridPosition ] = useWmState('gridPosition', initialPosition );
-    const [ gridSize, setGridSize ] = useWmState('gridSize', initialSize );
-
-    const [ title, setTitle ] = useWmState('title', initialTitle );
+    if ( !getWindowState('gridPosition') ) {
+        setWindowState('gridPosition', initialPosition)
+    }
+    if ( !getWindowState('gridSize')){
+        setWindowState('gridSize', initialSize)
+    }
+    const gridPosition = getWindowState('gridPosition')
+    const setGridPosition = (value) => setWindowState('gridPosition', value)
+    const gridSize = getWindowState('gridSize') 
+    const setGridSize = (value) => setWindowState('gridSize', value)
 
     return <WindowFrame
         //
@@ -21,9 +31,9 @@ export default function Window({
         hideWindow = { ()=>{ hideWindow(currentWindowId) } }
         closeWindow = { ()=>{ closeWindow(currentWindowId, 'active') } }
         //
-        initialTitle = {[ title, setTitle ]}
-        initialPosition={[ gridPosition, setGridPosition ]}
-        initialSize={[ gridSize, setGridSize ]}
+        initialTitle = {initialTitle}
+        initialPosition={[gridPosition, setGridPosition]}
+        initialSize={[gridSize,setGridSize]}
         {...props} 
     />
 }

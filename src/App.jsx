@@ -2,25 +2,23 @@ import { useContext, useState, useEffect, useRef } from 'react';
 import { WindowManagerRegistryContext, WindowManagerContext, WindowManagerProvider } from 'react-window-manager';
 import { Desktop, Start, Window } from './lib';
 import Inception from './exampleComponents/Inception';
-import WindowWithContext from './lib/components/Window';
 
 function AppFragment() {
     const  { initWindow, getAllWindowSpecs } = useContext(WindowManagerRegistryContext);
 
     const { currentWindowId, registerWindow, hideWindow, unhideWindow, closeWindow, windows} = useContext(WindowManagerContext);
 
-    const [ idToAction, setIdToAction] = useState('0');
-
+    const idRef = useRef()
     return (<>
         <Desktop style={{ width: '100vw', height: 'calc( 100vh - 30px - 2px )', backgroundColor: 'white'}}>
             {/* <WindowWithContext />
             <Window /> */}
-            <input onChange={(e)=>{ setIdToAction(e.target.value) }}></input><br/>
+            <input onChange={(e)=>{ idRef.current = e.target.value }}></input><br/>
             <button onClick={()=>{
-                initWindow(idToAction,{
+                initWindow(idRef.current,{
                     Component: Inception.name,
                     props: {
-                        initialTitle : `title: ${idToAction}`,
+                        initialTitle : `title: ${idRef.current}`,
                         initialPosition: {
                             left: 500,
                             top: 10
@@ -31,14 +29,14 @@ function AppFragment() {
                         }
                     },
                 });
-                registerWindow(idToAction); 
+                registerWindow(idRef.current); 
                 // console.log(getAllWindowSpecs())
             }}> initWindow </button> <br/>
 
 
-            <button onClick={()=>{ hideWindow(idToAction) }}> hideWindow </button><br/>
-            <button onClick={()=>{ unhideWindow(idToAction) }}> unhideWindow </button><br/>
-            <button onClick={()=>{ closeWindow(idToAction) }}> closeWindow </button><br/>
+            <button onClick={()=>{ hideWindow(idRef.current) }}> hideWindow </button><br/>
+            <button onClick={()=>{ unhideWindow(idRef.current) }}> unhideWindow </button><br/>
+            <button onClick={()=>{ closeWindow(idRef.current) }}> closeWindow </button><br/>
             
             { `active: ${ JSON.stringify(windows.active) }`}<br/>
             { `hidden: ${ JSON.stringify(windows.hidden) }`}<br/>
@@ -73,7 +71,7 @@ function AppFragment() {
 
 export default function App({props}){
     return (
-        <WindowManagerProvider id={'/index'}>
+        <WindowManagerProvider id={'/index'} key={'/index'}>
             
             <AppFragment {...props} />
         </WindowManagerProvider>

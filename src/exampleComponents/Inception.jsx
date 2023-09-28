@@ -6,18 +6,19 @@ import { Desktop, Start } from '../lib';
 export default function Inception({...props}){
     const  { initWindow, getAllWindowSpecs } = useContext(WindowManagerRegistryContext);
 
-    const { currentWindowId, useWmState, registerWindow, hideWindow, unhideWindow, closeWindow, windows} = useContext(WindowManagerContext);
+    const { currentWindowId, setWindowState, getWindowState, registerWindow, hideWindow, unhideWindow, closeWindow, windows } = useContext(WindowManagerContext);
 
-    const [ idToAction, setIdToAction] = useWmState('test','0');
+//     setWindowState('test','fuck you')
+// console.log(getWindowState('test'))
 
     return (<>
-        <Desktop style={{ width: '100%', height: 'calc( 100% - 30px - 2px )', backgroundColor: 'white'}}>
-            <input onChange={(e)=>{ setIdToAction(e.target.value) }}></input><br/>
-            <button onClick={()=>{
-                initWindow(idToAction,{
+        {/* <Desktop style={{ width: '100%', height: 'calc( 100% - 30px - 2px )', backgroundColor: 'white'}}>
+            <input onChange={(e)=>{ setTitle(e.target.value) }}></input><br/>
+             <button onClick={()=>{
+                initWindow('90',{
                     Component: Inception.name,
                     props: {
-                        initialTitle : `title: ${idToAction}`,
+                        initialTitle : `title: ${90}`,
                         initialPosition: {
                             left: 500,
                             top: 10
@@ -28,9 +29,9 @@ export default function Inception({...props}){
                         }
                     },
                 });
-                registerWindow(idToAction); 
+                registerWindow('90'); 
                 console.log(getAllWindowSpecs())
-            }}> initWindow </button> <br/>
+            }}> initWindow </button> <br/> 
 
 
             <button onClick={()=>{ hideWindow(idToAction) }}> hideWindow </button><br/>
@@ -64,6 +65,6 @@ export default function Inception({...props}){
             <Start.Footer>
 
             </Start.Footer>
-        </Start.Bar>
+        </Start.Bar> */}
     </>)
 }

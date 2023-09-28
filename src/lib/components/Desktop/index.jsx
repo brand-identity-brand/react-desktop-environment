@@ -12,18 +12,17 @@ export default function Desktop({children, className, style}){
     const  { getAllWindowSpecs } = useContext(WindowManagerRegistryContext);
     const  { components } = useContext(DesktopEnvironmentContext);
 
-    const { windows, liftWindowToTop, hideWindow, closeWindow }= useContext(WindowManagerContext);
+    const { currentWindowId, windows, liftWindowToTop, hideWindow, closeWindow }= useContext(WindowManagerContext);
 
     const windowSpecs = getAllWindowSpecs();
     // const masterRef = useRef();
 
     // const maxZIndex = 2147483647;
-console.log(windowSpecs)
+
     return (
         <div className={`${css.master} ${className}`} style={style}>
             {children}
             { windows.active.map( (childWindowId)=>{ 
-
                 const { Component: componentTag, props } = windowSpecs[childWindowId];
                 const Component = components[componentTag];
                 // compare props and states, if there are same keys prioritise state

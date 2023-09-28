@@ -20,8 +20,12 @@ export default function WindowFrame({children, className, style, onClick, ...pro
     } = props;
 
     const [ title, setTitle ] = Array.isArray(initialTitle)? initialTitle : [ initialTitle, ()=>{}];
-    const [ gridPositionWithContext, setGridPositionWithContext ] = Array.isArray(initialPosition)? initialPosition : [ initialPosition, ()=>{}];
-    const [ gridSizeWithContext, setGridSizeWithContext ] = Array.isArray(initialSize)? initialSize : [ initialSize, ()=>{}];
+    const [ gridPositionWithContext, setGridPositionWithContext ] = Array.isArray(initialPosition)
+        ? initialPosition 
+        : [ initialPosition, ()=>{}];
+    const [ gridSizeWithContext, setGridSizeWithContext ] = Array.isArray(initialSize)
+        ? initialSize 
+        : [ initialSize, ()=>{}];
 
     const offsetRef = useRef({top: 0, left: 0});
     // const windowPositionRef = useRef(initialPosition);
