@@ -14,62 +14,187 @@ npm i react-desktop-environment
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
-import { DesktopEnvironmentContextProvider } from './lib';
-import '/node_modules/react-desktop-environment/dist/style.css';
+import DesktopEnvironmentWithWindowManagerRegistryProvider from 'react-desktop-environment';
+import Inception from './components/Inception';
 
+const components = {
+    // a list of components to be rendered in <Window />
+    Inception
+}
 ReactDOM.createRoot(document.getElementById('root')).render(
-   <DesktopEnvironmentContextProvider>
-        <React.StrictMode>
-            <App id={0}/>
-        </React.StrictMode>
-    </DesktopEnvironmentContextProvider>,
+    <DesktopEnvironmentWithWindowManagerRegistryProvider components={components}>
+        <Main/>
+    </DesktopEnvironmentWithWindowManagerRegistryProvider>
+,
 )
+
+function Main(){
+    const { initWindow } = useWindowManagerRegistryContext();
+    initWindow('/index');
+    return (
+        <App/>
+    )
+}
 ```
 ```javascript
 // App.jsx
-import { useContext } from 'react';
-import { WindowManagerContext, Window, Desktop, SpawnWindowButton } from 'react-desktop-environment';
+import { useContext, useState, useEffect, useRef } from 'react';
+import { 
+    useWindowManagerRegistryContext, useWindowManagerContext, 
+    WindowManagerProvider,
+    // components
+    Desktop, Start, Window 
+} from 'react-desktop-environment';
+import Inception from './components/Inception';
 
-function App({id}) {
-    const  { useMinimise }  = useContext(WindowManagerContext); 
-    const { minimisedWindowIds, minimiseWindow, restoreMinimisedWindow } = useMinimise([]);
+function AppFragment() {
+    const  { initWindow, getAllWindowSpecs } = useWindowManagerRegistryContext();
+    const { currentWindowId, registerWindow, hideWindow, unhideWindow, closeWindow, windows} = useWindowManagerContext();
 
-    // const maxZIndex = 2147483647;
-    return (
-        <Desktop
-            id={id}
-            minimisedWindowIds={minimisedWindowIds}
-            style={{
-                width: '100vw',
-                height: '100vh'
-            }}
-        >
-            <SpawnWindowButton
-                parentWindowId={id}
-                Component={Window}
-                initialPosition= {{ top: 300, left: 300} }
-                initialSize= {{ width: 300, height: 500}}
-                // minimiseWindow= {'disable'}
-                // moveWindow={'disable'}
-                // closeWindow={'disable'}
-                // resizeWindow={'disable'}
-            >
-                this spawns an empty window that self minimises
-            </SpawnWindowButton>
-            <SpawnWindowButton
-                parentWindowId={id}
-                Component={Window}
-                initialPosition= {{ top: 300, left: 300} }
-                initialSize= {{ width: 300, height: 500}}
-                minimiseWindow= {(id) => {  minimiseWindow(id); }}
-                // moveWindow={'disable'}
-                // closeWindow={'disable'}
-                // resizeWindow={'disable'}
-            >
-                this spawns an empty window that minimises to minimisedWindowIds
-            </SpawnWindowButton>
+    const idRef = useRef()
+    return (<>
+        <Desktop style={{ width: '100vw', height: 'calc( 100vh - 30px - 2px )', backgroundColor: 'white'}}>
+            <input onChange={(e)=>{ idRef.current = e.target.value }}></input><br/>
+            <button onClick={()=>{
+                if ( idRef.current === undefined ) {
+                    alert( 'input empty')
+                } else {
+                    initWindow(idRef.current,{
+                        Component: Inception.name,
+                        props: {
+                            initialTitle : `title: ${idRef.current}`,
+                            initialPosition: {
+                                left: 500,
+                                top: 10
+                            },
+                            initialSize: {
+                                width: 300,
+                                height: 200
+                            }
+                        },
+                    });
+                    registerWindow(idRef.current); 
+                }
+            }}> initWindow </button> <br/>
+
+
+            <button onClick={()=>{ hideWindow(idRef.current) }}> hideWindow </button><br/>
+            <button onClick={()=>{ unhideWindow(idRef.current) }}> unhideWindow </button><br/>
+            <button onClick={()=>{ closeWindow(idRef.current) }}> closeWindow </button><br/>
+            
+            { `active: ${ JSON.stringify(windows.active) }`}<br/>
+            { `hidden: ${ JSON.stringify(windows.hidden) }`}<br/>
+            { `closed: ${ JSON.stringify(windows.closed) }`}<br/>
 
         </Desktop>
+        <Start/>
+    </>)
+}
+
+export default function App({props}){
+    return (
+        <WindowManagerProvider id={'/index'} key={'/index'}>
+            <AppFragment {...props} />
+        </WindowManagerProvider>
     )
 }
+```
+```javascript
+import { useRef } from 'react';
+import { 
+    useWindowManagerRegistryContext,
+    useWindowManagerContext,
+    //ui
+    Desktop, StartFrame as Start
+} from 'react-desktop-environment';
+
+
+export default function Inception({...props}){
+    const  { initWindow } = useWindowManagerRegistryContext();
+    const { states, setWindowState, registerWindow, hideWindow, unhideWindow, closeWindow, windows } = useWindowManagerContext();
+
+    function setTitle(value){
+        setWindowState('title', value);
+    }
+    
+    const idRef = useRef();
+    return (<>
+        <Desktop style={{ width: '100%', height: 'calc( 100% - 30px - 2px )', backgroundColor: 'white'}}>
+            { Object.keys(states).map( key => {
+                return (
+                    <ul key={key}>
+                        <li>
+                            {key}
+                        </li>
+                        <ul>
+                            <li>
+                                {JSON.stringify(states[key])}
+                            </li>
+                        </ul>
+                    </ul>
+                )
+            })}
+            
+            <label>set current Window Title</label><br/>
+            <input onChange={(e)=>{ setTitle(e.target.value) }}></input><br/>
+            <label>set current new Window Title</label><br/>
+            <input onChange={(e)=>{ idRef.current = e.target.value }}></input><br/>
+             <button onClick={()=>{
+                if ( idRef.current === undefined ) {
+                    alert( 'input empty')
+                } else {
+                    initWindow(idRef.current,{
+                        Component: Inception.name,
+                        props: {
+                            initialTitle : `title: ${idRef.current}`,
+                            initialPosition: {
+                                left: 500,
+                                top: 10
+                            },
+                            initialSize: {
+                                width: 300,
+                                height: 200
+                            }
+                        },
+                    });
+                    registerWindow(idRef.current); 
+                }
+            }}> initWindow </button> <br/> 
+
+
+            <button onClick={()=>{ hideWindow(idToAction) }}> hideWindow </button><br/>
+            <button onClick={()=>{ unhideWindow(idToAction) }}> unhideWindow </button><br/>
+            <button onClick={()=>{ closeWindow(idToAction) }}> closeWindow </button><br/>
+            
+            { `active: ${ JSON.stringify(windows.active) }`}<br/>
+            { `hidden: ${ JSON.stringify(windows.hidden) }`}<br/>
+            { `closed: ${ JSON.stringify(windows.closed) }`}<br/>
+
+        </Desktop>
+        < Start.Bar>
+            < Start.Menu>
+                <div>settings</div>
+            </ Start.Menu>
+            < Start.Icons>
+                <div>{'||'}</div>
+                <div>{'||'}</div>
+            </ Start.Icons>
+            <Start.Windows>
+                {windows.hidden.map( id => {
+                    return (
+                        <button key={id}
+                            onClick={()=>{unhideWindow(id)}}
+                        >
+                            {id}
+                        </button>
+                    )
+                })}
+            </Start.Windows>
+            <Start.Footer>
+
+            </Start.Footer>
+        </Start.Bar>
+    </>)
+}
+
 ```

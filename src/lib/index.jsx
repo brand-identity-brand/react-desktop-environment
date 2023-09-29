@@ -1,16 +1,32 @@
+// Contextless 
 import WindowFrame from "./components/frames/WindowFrame";
 import DraggbleResizableFrame from "./components/frames/DraggbleResizableFrame";
-
+import * as StartFrame from "./components/frames/StartFrame";
+// with WindowManagerContext
 import Desktop from './components/Desktop';
-import * as Start from "./components/Start";
-import DesktopEnvironmentProvider, { DesktopEnvironmentContext } from "./contexts/DesktopEnvironment";
+import Start from "./components/Start";
 import Window from './components/Window';
-export default DesktopEnvironmentProvider;
+// 
+import DesktopEnvironmentProvider, { DesktopEnvironmentContext } from "./contexts/DesktopEnvironment";
+import DesktopEnvironmentWithWindowManagerRegistryProvider from "./contexts/DesktopEnvironmentWithWindowManagerRegistryProvider";
+// useContexts
+import { useWindowManagerRegistryContext, useWindowManagerContext } from "./hooks/useContext";
+
+export default DesktopEnvironmentWithWindowManagerRegistryProvider;//DesktopEnvironmentProvider;
+
 export {
-    Window,
-    Desktop,
+    // Contextless 
     WindowFrame,
     DraggbleResizableFrame,
+    StartFrame,
+    // with WindowManagerContext
+    Window,
+    Desktop,
     Start,
-    DesktopEnvironmentContext
+    //
+    DesktopEnvironmentContext,
+    DesktopEnvironmentProvider,
+    // useContexts
+    useWindowManagerRegistryContext, 
+    useWindowManagerContext
 }

@@ -1,40 +1,62 @@
-import { useContext, useState, useEffect, useRef } from 'react';
-import { WindowManagerRegistryContext, WindowManagerContext, WindowManagerProvider } from 'react-window-manager';
-import { Desktop, Start } from '../lib';
+import { useRef } from 'react';
+import { 
+    useWindowManagerRegistryContext,
+    useWindowManagerContext,
+    //ui
+    Desktop, StartFrame as Start
+} from '../lib';
 
 
 export default function Inception({...props}){
-    const  { initWindow, getAllWindowSpecs } = useContext(WindowManagerRegistryContext);
+    const  { initWindow } = useWindowManagerRegistryContext();
+    const { states, setWindowState, registerWindow, hideWindow, unhideWindow, closeWindow, windows } = useWindowManagerContext();
 
-    const { states, currentWindowId, useWindowState, setWindowState, registerWindow, hideWindow, unhideWindow, closeWindow, windows } = useContext(WindowManagerContext);
-
-    const [ title, setTitle ] = useWindowState('title', 'initialTitle');
+    function setTitle(value){
+        setWindowState('title', value);
+    }
     
-    const testSetTitle = (value) => setWindowState('title', value)
-    
+    const idRef = useRef();
     return (<>
-    <div>{JSON.stringify(states)}</div>
-                <input onChange={(e)=>{ testSetTitle(e.target.value) }}></input>
-
-        {/* <Desktop style={{ width: '100%', height: 'calc( 100% - 30px - 2px )', backgroundColor: 'white'}}>
+        <Desktop style={{ width: '100%', height: 'calc( 100% - 30px - 2px )', backgroundColor: 'white'}}>
+            { Object.keys(states).map( key => {
+                return (
+                    <ul key={key}>
+                        <li>
+                            {key}
+                        </li>
+                        <ul>
+                            <li>
+                                {JSON.stringify(states[key])}
+                            </li>
+                        </ul>
+                    </ul>
+                )
+            })}
+            
+            <label>set current Window Title</label><br/>
             <input onChange={(e)=>{ setTitle(e.target.value) }}></input><br/>
+            <label>set current new Window Title</label><br/>
+            <input onChange={(e)=>{ idRef.current = e.target.value }}></input><br/>
              <button onClick={()=>{
-                initWindow('90',{
-                    Component: Inception.name,
-                    props: {
-                        initialTitle : `title: ${90}`,
-                        initialPosition: {
-                            left: 500,
-                            top: 10
+                if ( idRef.current === undefined ) {
+                    alert( 'input empty')
+                } else {
+                    initWindow(idRef.current,{
+                        Component: Inception.name,
+                        props: {
+                            initialTitle : `title: ${idRef.current}`,
+                            initialPosition: {
+                                left: 500,
+                                top: 10
+                            },
+                            initialSize: {
+                                width: 300,
+                                height: 200
+                            }
                         },
-                        initialSize: {
-                            width: 300,
-                            height: 200
-                        }
-                    },
-                });
-                registerWindow('90'); 
-                console.log(getAllWindowSpecs())
+                    });
+                    registerWindow(idRef.current); 
+                }
             }}> initWindow </button> <br/> 
 
 
@@ -69,6 +91,6 @@ export default function Inception({...props}){
             <Start.Footer>
 
             </Start.Footer>
-        </Start.Bar> */}
+        </Start.Bar>
     </>)
 }

@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: path.resolve(__dirname, 'src/lib/index.jsx'),
-      name: 'React Desktop Environment',
+      name: 'react-desktop-environment',
       fileName: (format) => `react-desktop-environment.${format}.js`
     },
     rollupOptions: {

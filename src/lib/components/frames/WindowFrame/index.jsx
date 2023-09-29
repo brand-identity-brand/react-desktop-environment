@@ -2,8 +2,7 @@
  * basic Window component that is meant ot be wrapped into preset Window
  */
 import css from './index.module.css';
-import { useState, useEffect, useRef, useContext, useMemo } from 'react';
-import { WindowManagerContext } from 'react-window-manager';
+import { useState, useEffect, useRef } from 'react';
 import DraggbleResizableFrame from '../DraggbleResizableFrame';
 
 export default function WindowFrame({children, className, style, onClick, ...props}){

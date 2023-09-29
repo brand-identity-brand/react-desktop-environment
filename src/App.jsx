@@ -15,21 +15,25 @@ function AppFragment() {
             <Window /> */}
             <input onChange={(e)=>{ idRef.current = e.target.value }}></input><br/>
             <button onClick={()=>{
-                initWindow(idRef.current,{
-                    Component: Inception.name,
-                    props: {
-                        initialTitle : `title: ${idRef.current}`,
-                        initialPosition: {
-                            left: 500,
-                            top: 10
+                if ( idRef.current === undefined ) {
+                    alert( 'input empty')
+                } else {
+                    initWindow(idRef.current,{
+                        Component: Inception.name,
+                        props: {
+                            initialTitle : `title: ${idRef.current}`,
+                            initialPosition: {
+                                left: 500,
+                                top: 10
+                            },
+                            initialSize: {
+                                width: 300,
+                                height: 200
+                            }
                         },
-                        initialSize: {
-                            width: 300,
-                            height: 200
-                        }
-                    },
-                });
-                registerWindow(idRef.current); 
+                    });
+                    registerWindow(idRef.current); 
+                }
                 // console.log(getAllWindowSpecs())
             }}> initWindow </button> <br/>
 
@@ -43,7 +47,8 @@ function AppFragment() {
             { `closed: ${ JSON.stringify(windows.closed) }`}<br/>
 
         </Desktop>
-        < Start.Bar>
+        <Start/>
+        {/* < Start.Bar>
             < Start.Menu>
                 <div>settings</div>
             </ Start.Menu>
@@ -54,18 +59,18 @@ function AppFragment() {
             <Start.Windows>
                 {windows.hidden.map( id => {
                     return (
-                        <button key={id}
+                        <Start.Windows.Minimised key={id}
                             onClick={()=>{unhideWindow(id)}}
                         >
                             {id}
-                        </button>
+                        </Start.Windows.Minimised>
                     )
                 })}
             </Start.Windows>
             <Start.Footer>
 
             </Start.Footer>
-        </Start.Bar>
+        </Start.Bar> */}
     </>)
 }
 

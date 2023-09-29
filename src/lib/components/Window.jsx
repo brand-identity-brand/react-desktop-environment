@@ -12,13 +12,13 @@ export default function Window({
     const {
         currentWindowId,
         useWindowState,
-        getWindowState
+        initWindowState
     }= useContext(WindowManagerContext);
 
     const [ gridPosition, setGridPosition ] = useWindowState('gridPosition', initialPosition);
     const [ gridSize, setGridSize ] = useWindowState('gridSize', initialSize);
     // const [ title, setTitle ] = useWindowState('title', initialTitle);
-    const title = getWindowState('title');
+    const title = initWindowState('title', initialTitle);
     
     return <WindowFrame
         //
