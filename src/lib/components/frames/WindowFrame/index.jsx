@@ -19,7 +19,7 @@ export default function WindowFrame({children, className, style, onClick, ...pro
         classNames,
     } = props;
 
-    const [ title, setTitle ] = Array.isArray(initialTitle)? initialTitle : [ initialTitle, ()=>{}];
+    // const [ title, setTitle ] = Array.isArray(initialTitle)? initialTitle : [ initialTitle, ()=>{}];
     const [ gridPositionWithContext, setGridPositionWithContext ] = Array.isArray(initialPosition)
         ? initialPosition 
         : [ initialPosition, ()=>{}];
@@ -158,7 +158,8 @@ export default function WindowFrame({children, className, style, onClick, ...pro
                                 e.preventDefault();
                             }}
                         >
-                            {title}
+                            {/* {title} */}
+                            {initialTitle}
                         </div>
                         <div className={`${css.top_right} ${classNames?.top_right}`}>
                             { hideWindow && <button className='rde-unselectable'

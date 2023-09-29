@@ -6,12 +6,16 @@ import { Desktop, Start } from '../lib';
 export default function Inception({...props}){
     const  { initWindow, getAllWindowSpecs } = useContext(WindowManagerRegistryContext);
 
-    const { currentWindowId, setWindowState, getWindowState, registerWindow, hideWindow, unhideWindow, closeWindow, windows } = useContext(WindowManagerContext);
+    const { states, currentWindowId, useWindowState, setWindowState, registerWindow, hideWindow, unhideWindow, closeWindow, windows } = useContext(WindowManagerContext);
 
-//     setWindowState('test','fuck you')
-// console.log(getWindowState('test'))
-
+    const [ title, setTitle ] = useWindowState('title', 'initialTitle');
+    
+    const testSetTitle = (value) => setWindowState('title', value)
+    
     return (<>
+    <div>{JSON.stringify(states)}</div>
+                <input onChange={(e)=>{ testSetTitle(e.target.value) }}></input>
+
         {/* <Desktop style={{ width: '100%', height: 'calc( 100% - 30px - 2px )', backgroundColor: 'white'}}>
             <input onChange={(e)=>{ setTitle(e.target.value) }}></input><br/>
              <button onClick={()=>{

@@ -1,5 +1,5 @@
 import css from './index.module.css';
-import { useContext } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { WindowManagerRegistryContext, WindowManagerContext, WindowManagerProvider } from 'react-window-manager';
 import { DesktopEnvironmentContext } from '../../contexts/DesktopEnvironment';
 import Window from '../Window';

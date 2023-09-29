@@ -51,6 +51,6 @@
         "vitest": "^0.30.1"
     },
     "dependencies": {
-        "react-window-manager": "^0.2.49"
+        "react-window-manager": "^0.2.56"
     }
 }
