@@ -213,7 +213,7 @@ export default function WindowFrame({children, className, style, onClick, ...pro
     )
 }
 
-Window.defaultProps = {
+WindowFrame.defaultProps = {
     minSize: {
         width: 300,
         height: 200

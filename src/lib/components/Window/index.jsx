@@ -1,4 +1,4 @@
-import WindowFrame from "./frames/WindowFrame";
+import WindowFrame from "../frames/WindowFrame";
 import { useContext, useEffect, useState } from "react";
 import { WindowManagerContext, WindowManagerRegistryContext } from 'react-window-manager';
 

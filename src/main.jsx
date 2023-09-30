@@ -4,7 +4,7 @@ import ReactDOM from 'react-dom/client'
 import './main.css'
 import App from './App'
 import WindowManagerRegistryProvider, {WindowManagerProvider, WindowManagerRegistryContext} from 'react-window-manager';
-import DesktopEnvironmentProvider, { Window } from './lib';
+import DesktopEnvironmentProvider, { Window, useWindowManagerRegistryContext } from './lib';
 import Inception from './exampleComponents/Inception';
 
 const components = {
@@ -26,7 +26,7 @@ function Wrapper(){
 }
 
 function Main(){
-  const { initWindow } = useContext(WindowManagerRegistryContext);
+  const { initWindow } = useWindowManagerRegistryContext();
   initWindow('/index');
   return (
     <App/>
