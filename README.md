@@ -9,6 +9,7 @@ npm i react-desktop-environment
 ```
 
 ## Usage
+
 ```javascript
 // main.jsx
 import React from 'react'
@@ -196,5 +197,49 @@ export default function Inception({...props}){
         </Start.Bar>
     </>)
 }
-
 ```
+
+## Refernece
+
+### Context: DesktopEnvironment 
+
+#### Provider
+```js
+import ReactComponent from './directory';
+/**
+ * a list of ReactComponent
+*/
+const components = {
+    ReactComponent
+}
+/**
+ * 
+*/
+<DesktopEnvironmentProvider components={components}>
+    {children}
+<DesktopEnvironmentProvider/>
+            -OR-
+<DesktopEnvironmentWithWindowManagerRegistryProvider components={components}>
+    {children}
+<DesktopEnvironmentWithWindowManagerRegistryProvider />
+```
+| Prop | Description |
+| --- | ----------- |
+| components | this gives a refernce of all Component that might be rendered. Used by <Desktop/> or you can create your own render function |
+
+#### Context 
+```javascript
+const { components } = useDesktopEnvironmentContext();
+```
+| Item | Params | Description |
+| - | - | - |
+| components | n/a | this gives a refernce of all Component that might be rendered. Used by <Desktop/> or you can create your own render function |
+
+### Context: WindowManager 
+```javascript
+// please refer to react-window-manager
+```
+
+### Component: Window
+### Component: Desktop
+### Component: Start
