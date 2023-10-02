@@ -36,18 +36,18 @@ export default function Start(){
         </StartFrame.Bar>
     )
 }
-Start.Bar = ({children}) => < StartFrame.Bar>{children}</StartFrame.Bar>
-Start.Menu = ({children}) => < StartFrame.Menu>{children}</StartFrame.Menu>
-Start.Icons = ({children}) => < StartFrame.Icons>{children}</StartFrame.Icons>
-Start.Windows = () => {
+Start.Bar = ({className = '', style = {}, children}) => < StartFrame.Bar className={className} style={style}>{children}</StartFrame.Bar>
+Start.Menu = ({className = '', style = {}, children}) => < StartFrame.Menu className={className} style={style}>{children}</StartFrame.Menu>
+Start.Icons = ({className = '', style = {}, children}) => < StartFrame.Icons className={className} style={style}>{children}</StartFrame.Icons>
+Start.Windows = ({classNames = {}, styles = {}}) => {
     const { getTargetWindowSpecsById } = useWindowManagerRegistryContext();
     const { windows, unhideWindow } = useWindowManagerContext();
     return(
-        <StartFrame.Windows>
+        <StartFrame.Windows classNames={classNames.container} style={styles.container}>
             {windows.hidden.map( id => {
                 const { states: {title} }= getTargetWindowSpecsById(id);
                 return (
-                    <StartFrame.Windows.Minimised key={id}
+                    <StartFrame.Windows.Minimised key={id} classNames={classNames.minimised} style={styles.minimised}
                         onClick={()=>{unhideWindow(id)}}
                     >
                         {title}
@@ -57,4 +57,4 @@ Start.Windows = () => {
         </StartFrame.Windows>
     )
 }
-Start.Footer = ({children}) => < StartFrame.Footer>{children}</StartFrame.Footer>
+Start.Footer = ({className = '', style = {}, children}) => < StartFrame.Footer className={className} style={style}>{children}</StartFrame.Footer>
