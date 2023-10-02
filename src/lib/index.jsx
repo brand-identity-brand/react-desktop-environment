@@ -12,7 +12,7 @@ import DesktopEnvironmentWithWindowManagerRegistryProvider from "./contexts/Desk
 // useContexts
 import { useWindowManagerRegistryContext, useWindowManagerContext, useDesktopEnvironmentContext } from "./hooks/useContext";
 // window-manager
-import { WindowManagerProvider } from 'react-window-manager';
+import WindowManagerRegistryProvider, { WindowManagerProvider } from 'react-window-manager';
 
 export default DesktopEnvironmentWithWindowManagerRegistryProvider;//DesktopEnvironmentProvider;
 
@@ -26,10 +26,11 @@ export {
     Desktop,
     Start,
     //
-    DesktopEnvironmentContext,
+    WindowManagerRegistryProvider,
     DesktopEnvironmentProvider,
     WindowManagerProvider,
     // useContexts
+    DesktopEnvironmentContext,
     useWindowManagerRegistryContext, 
     useWindowManagerContext,
     useDesktopEnvironmentContext
