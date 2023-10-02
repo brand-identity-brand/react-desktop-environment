@@ -1,8 +1,9 @@
 import * as StartFrame from "../frames/StartFrame";
-import { useWindowManagerContext } from "../../hooks/useContext";
+import { useWindowManagerContext, useWindowManagerRegistryContext } from "../../hooks/useContext";
 
 export default function Start({menu, icons, footer}){
-    const { windows, unhideWindow } = useWindowManagerContext();
+    const { windows, unhideWindow, getWindowState } = useWindowManagerContext();
+    const { getTargetWindowSpecsById } = useWindowManagerRegistryContext();
     return (
         < StartFrame.Bar>
 
@@ -17,11 +18,12 @@ export default function Start({menu, icons, footer}){
 
             <StartFrame.Windows>
                 {windows.hidden.map( id => {
+                    const { states: {title} }= getTargetWindowSpecsById(id);
                     return (
                         <StartFrame.Windows.Minimised key={id}
                             onClick={()=>{unhideWindow(id)}}
                         >
-                            {id}
+                            {title}
                         </StartFrame.Windows.Minimised>
                     )
                 })}
