@@ -2,6 +2,7 @@ import { createContext, useEffect, useRef } from "react";
 import { htmlToElement } from "../utils";
 
 export const DesktopEnvironmentContext = createContext({components:{}});
+DesktopEnvironmentContext.displayName = 'DesktopEnvironmentContext';
 
 export default function DesktopEnvironmentProvider({components, children}){
     // create and empty img element for drag img

@@ -11,7 +11,6 @@ import Window from '../Window';
 export default function Desktop({children, className, style}){
     const  { getAllWindowSpecs } = useContext(WindowManagerRegistryContext);
     const  { components } = useContext(DesktopEnvironmentContext);
-
     const { currentWindowId, windows, liftWindowToTop, hideWindow, closeWindow }= useContext(WindowManagerContext);
 
     const windowSpecs = getAllWindowSpecs();

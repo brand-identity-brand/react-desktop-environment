@@ -10,6 +10,7 @@ export default function DraggbleResizableFrame({children, className, style, onMo
         lockResize, //bool
         initialPosition,
         initialSize,
+        // runAfterResize,
         renderContent
     } = props;
     const gridRef = useRef();
@@ -38,21 +39,21 @@ export default function DraggbleResizableFrame({children, className, style, onMo
                 area={'nw'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
-                onResize={()=>{}}
+                //  runAfterResize={runAfterResize}
             />
             <Area 
                 lockResize={lockResize}
                 area={'nwn'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
-                onResize={()=>{}}
+                 // runAfterResize={runAfterResize}
             />
             <Area 
                 lockResize={lockResize}
                 area={'nww'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
-                onResize={()=>{}}
+                 // runAfterResize={runAfterResize}
             />
             <Area 
                 lockResize={lockResize}
@@ -66,25 +67,28 @@ export default function DraggbleResizableFrame({children, className, style, onMo
                 area={'ne'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
+                 // runAfterResize={runAfterResize}
             />
             <Area 
                 lockResize={lockResize}
                 area={'nen'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
+                 // runAfterResize={runAfterResize}
             />
             <Area 
                 lockResize={lockResize}
                 area={'nee'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
+                 // runAfterResize={runAfterResize}
             />
             <Area 
                 lockResize={lockResize}
                 area={'w'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
-                // className={css.verticalSubGrid}
+                 // runAfterResize={runAfterResize}
             >
             </Area>
             <div
@@ -97,13 +101,14 @@ export default function DraggbleResizableFrame({children, className, style, onMo
                 area={'e'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
-                // className={css.verticalSubGrid}
+                 // runAfterResize={runAfterResize}
             />
             <Area 
                 lockResize={lockResize}
                 area={'sw'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
+                 // runAfterResize={runAfterResize}
             />
             <Area 
                 lockResize={lockResize}
@@ -116,31 +121,35 @@ export default function DraggbleResizableFrame({children, className, style, onMo
                 area={'sww'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
+                 // runAfterResize={runAfterResize}
             />
             <Area 
                 lockResize={lockResize}
                 area={'s'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
-                // className={css.horizontalSubGrid}
+                 // runAfterResize={runAfterResize}
             />
             <Area 
                 lockResize={lockResize}
                 area={'se'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
+                 // runAfterResize={runAfterResize}
             />
             <Area 
                 lockResize={lockResize}
                 area={'ses'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
+                 // runAfterResize={runAfterResize}
             />
             <Area 
                 lockResize={lockResize}
                 area={'see'}
                 useGridPosition={[ gridPosition, setGridPosition ]}
                 useGridSize={[ gridSize, setGridSize ]}
+                 // runAfterResize={runAfterResize}
             />
         </div>
     )
@@ -149,6 +158,7 @@ export default function DraggbleResizableFrame({children, className, style, onMo
 DraggbleResizableFrame.defaultProps = {
     className: '',
     style: {},
+    runAfterResize: ()=>{}
     // initialPosition: {
     //     left: 10,
     //     top: 10
@@ -165,6 +175,7 @@ function Area({className, style, children, ...props}) {
         area,
         useGridPosition,
         useGridSize,
+        // runAfterResize,
     } = props;
     const [ gridPosition, setGridPosition ] = useGridPosition;
     const [ gridSize, setGridSize ] = useGridSize;
@@ -230,6 +241,10 @@ function Area({className, style, children, ...props}) {
             onDragOver={(e)=>{
                 // prevent dragImage flyover when dropping
                 e.preventDefault();
+            }}
+            onDragEnd={(e)=>{
+                e.preventDefault();
+                // runAfterResize(); 
             }}
         >
             {children}

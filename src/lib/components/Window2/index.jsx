@@ -2,12 +2,12 @@
  * basic Window component that is meant ot be wrapped into preset Window
  */
 import css from './index.module.css';
-import { useState, useEffect, useRef, useMemo } from 'react';
-import DraggbleResizableFrame from '../DraggbleResizableFrame';
+import { useState, useEffect, useRef, useContext } from 'react';
+import DraggbleResizableFrame from '../frames/DraggbleResizableFrame';
+import { useWindowManagerContext } from '../../hooks/useContext';
 
 export default function WindowFrame({children, className, style, onClick, ...props}){
     const {
-        // syncWindowState=()=>{},
         liftWindowToTop, hideWindow, closeWindow,
         // parentId,
         initialTitle,
@@ -19,37 +19,33 @@ export default function WindowFrame({children, className, style, onClick, ...pro
         classNames,
     } = props;
 
-    // const [ title, setTitle ] = Array.isArray(initialTitle)? initialTitle : [ initialTitle, ()=>{}];
-    const [ gridPositionWithContext, setGridPositionWithContext ] = useMemo(()=>Array.isArray(initialPosition)
-        ? initialPosition 
-        : [ initialPosition, ()=>{}]
-    ,[])
-    const [ gridSizeWithContext, setGridSizeWithContext ] = useMemo(()=>Array.isArray(initialSize)
-        ? initialSize 
-        : [ initialSize, ()=>{}]
-    ,[])
+    const {
+        // currentWindowId,
+        // useWindowState,
+        initWindowState,
+        syncWindowState,
+        // states,
+        setWindowState,
+        getWindowStates
+    }= useWindowManagerContext();
 
     const offsetRef = useRef({top: 0, left: 0});
-    // const windowPositionRef = useRef(initialPosition);
-    // const windowSizeRef = useRef(initialSize);
-
-    // if ( isWindowStatesReady(['gridSize','gridPosition'])  ) {
-    //     windowPositionRef.current = getWindowState('gridPosition');
-    //     windowSizeRef.current = getWindowState('gridSize');
-    // } 
+    const windowPositionRef = useRef(initWindowState('gridPosition',initialPosition));
+    const windowSizeRef = useRef(initWindowState('gridSize',initialSize));
 
     const [ isMaximisedLocally, setIsMaximisedLocally] = useState(
-        gridSizeWithContext.width === 'max' &&  gridSizeWithContext.height === 'max'
+        windowSizeRef.current.width === 'max' &&  windowSizeRef.current.height === 'max'
     );
     const [ isMinimisedLocally, setIsMinimisedLocally ] = useState(false);
 
-    const gridSizeBeforeMaximisationRef = useRef(gridSizeWithContext);
-    const gridPositionBeforeMaximisationRef = useRef(gridPositionWithContext);
+// //
+//     const gridSizeBeforeMaximisationRef = useRef(gridSizeWithContext);
+//     const gridPositionBeforeMaximisationRef = useRef(gridPositionWithContext);
 
     const minimisedLocalSize = { width: minSize.width, height: 18 + 2 + 2};
 
-    const gridSizeBeforeMinimisationRef = useRef(gridSizeWithContext);
-    const gridPositionBeforeMinimisationRef = useRef(gridPositionWithContext);
+    // const gridSizeBeforeMinimisationRef = useRef(gridSizeWithContext);
+    // const gridPositionBeforeMinimisationRef = useRef(gridPositionWithContext);
 
     return (
         <DraggbleResizableFrame
@@ -83,10 +79,10 @@ export default function WindowFrame({children, className, style, onClick, ...pro
             //         ? `${minimisedLocalSize.height}px` 
             //         : maxSize.height,
             }}
-            initialPosition={gridPositionWithContext}
-            initialSize={gridSizeWithContext}
+            initialPosition={windowPositionRef.current}
+            initialSize={windowSizeRef.current}
             lockResize={lockResize? true : isMaximisedLocally}
-            // runAfterResize={syncWindowState}
+            runAfterResize={syncWindowState}
             renderContent={( useGridPosition, useGridSize) => {
                 
                 const [ gridPosition, setGridPosition ] = useGridPosition;
@@ -94,10 +90,12 @@ export default function WindowFrame({children, className, style, onClick, ...pro
 
                 // TODO: move all position and size changes here. 
                 useEffect(()=>{
-                    setGridSizeWithContext( gridSize);
+                    setWindowState('gridSize', gridSize);
+                    
                 },[gridSize])
                 useEffect(()=>{
-                    setGridPositionWithContext( gridPosition );
+                    setWindowState('gridPosition', gridPosition);
+
                 },[gridPosition])
 
                 return (<>
@@ -105,13 +103,13 @@ export default function WindowFrame({children, className, style, onClick, ...pro
                         <div className={`${css.top_left}`}>
                             {!hideWindow && <button className='rde-unselectable' style={{width:'16px', height:'16px'}}
                                 onClick={()=>{
-                                    // syncWindowState();
+                                    syncWindowState();
                                     if ( isMinimisedLocally ) {
                                         setIsMinimisedLocally(false);
-                                        setGridSize( gridSizeBeforeMinimisationRef.current );
+                                        setGridSize( windowPositionRef.current );
                                     } else {
                                         setIsMinimisedLocally(true);
-                                        gridSizeBeforeMinimisationRef.current = gridSize;
+                                        windowPositionRef.current = gridSize;
                                         setGridSize( minimisedLocalSize );
                                     }
 
@@ -163,7 +161,7 @@ export default function WindowFrame({children, className, style, onClick, ...pro
                             }}
                             onDragEnd={(e)=>{
                                 e.preventDefault();
-                                // syncWindowState(); 
+                                syncWindowState(); 
                             }}
                         >
                             {/* {title} */}
@@ -172,7 +170,7 @@ export default function WindowFrame({children, className, style, onClick, ...pro
                         <div className={`${css.top_right} ${classNames?.top_right}`}>
                             { hideWindow && <button className='rde-unselectable'
                                 onClick={()=>{
-                                    // syncWindowState();
+                                    syncWindowState();
                                     if ( isMinimisedLocally ){
                                         
                                         setIsMinimisedLocally(false);
@@ -188,13 +186,13 @@ export default function WindowFrame({children, className, style, onClick, ...pro
                             <button className='rde-unselectable'
                                 onClick={()=>{
                                     if ( isMaximisedLocally ){
-                                        setGridPosition(  gridPositionBeforeMaximisationRef.current);
-                                        setGridSize( gridSizeBeforeMaximisationRef.current );
+                                        setGridPosition(  windowPositionRef.current);
+                                        setGridSize( windowSizeRef.current );
                                         //
                                         setIsMaximisedLocally(false);
                                     } else {
-                                        gridSizeBeforeMaximisationRef.current = gridSize;
-                                        gridPositionBeforeMaximisationRef.current = gridPosition;
+                                        windowSizeRef.current = gridSize;
+                                        windowPositionRef.current = gridPosition;
                                         // setWindowState('gridSizeBeforeMaximisation', gridSize);
                                         // setWindowState('gridPositionBeforeMaximisation', gridPosition);
                                         setGridPosition({left:0, top:0});
@@ -237,15 +235,3 @@ WindowFrame.defaultProps = {
     initialPosition: {left: 50, top:50},
     initialSize:{width: 200, height: 200},
 }
-
-// export function WindowBody({children, ...props}) {
-//     return (
-//         <div className={css.mid_body} {...props}>
-//             { children }
-//         </div>
-//  
-// }
-
-// Window.Body = WindowBody;
-
-// function TopBarMid
