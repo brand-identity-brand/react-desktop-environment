@@ -12,13 +12,13 @@ export default function Window({
         currentWindowId,
         useWindowState,
         initWindowState,
-        syncWindowState,
+        // syncWindowState,
         states,
         setWindowState
     }= useContext(WindowManagerContext);
 
-    const {current: [ gridPosition, setGridPosition ]} = useRef( useWindowState('gridPosition', initialPosition, false) );
-    const {current: [ gridSize, setGridSize ]} = useRef( useWindowState('gridSize', initialSize, false) );
+    // const {current: [ gridPosition, setGridPosition ]} = useRef( useWindowState('gridPosition', initialPosition, false) );
+    // const {current: [ gridSize, setGridSize ]} = useRef( useWindowState('gridSize', initialSize, false) );
     
     // useRef( initWindowState('gridPosition', initialPosition) );
     // useRef( initWindowState('gridSize', initialSize) );
@@ -27,25 +27,28 @@ export default function Window({
     
     return <WindowFrame
         //
-        syncWindowState = { syncWindowState }
+        // syncWindowState = { syncWindowState }
         //
         liftWindowToTop = { ()=>{ liftWindowToTop(currentWindowId) } }
         hideWindow = { ()=>{ hideWindow(currentWindowId) } }
         closeWindow = { ()=>{ closeWindow(currentWindowId, 'active') } }
         //
         initialTitle = {title}
-        initialPosition={[gridPosition, (val)=>setGridPosition(val, false)]}
-        initialSize={[gridSize, (val)=>setGridSize(val, false)]}
-        // initialPosition={[
-        //     states['gridPosition']
-        //     ,
-        //     (value)=>setWindowState('gridPosition', value)
-        // ]}
-        // initialSize={[
-        //     states['gridSize']
-        //     ,
-        //     (value)=>setWindowState('gridSize', value)
-        // ]}
+        // initialPosition={[gridPosition, (val)=>setGridPosition(val, false)]}
+        // initialSize={[gridSize, (val)=>setGridSize(val, false)]}
+        initialPosition={[
+            // states['gridPosition']
+            states.hasOwnProperty('gridPosition')? states['gridPosition'] : initialPosition
+            ,
+            (value)=>setWindowState(value, false, 'gridPosition')
+        ]}
+        initialSize={[
+            // states['gridSize']
+            states.hasOwnProperty('gridSize')? states['gridSize'] : initialSize
+
+            ,
+            (value)=>setWindowState(value, false, 'gridSize')
+        ]}
         {...props} 
     />
 }
