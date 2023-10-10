@@ -102,8 +102,11 @@ export default function WindowFrame({children, className, style, onClick, ...pro
 
                 return (<>
                     <div className={`${css.top} rde-unselectable ${classNames?.top}`}>
-                        <div className={`${css.top_left}`}>
-                            {!hideWindow && <button className='rde-unselectable' style={{width:'16px', height:'16px'}}
+                        <div className={`${css.top_left}`} style={{
+                            backgroundColor: hideWindow===undefined? '' : 'black', // this element is on the top level. omit bkgd colour or set zindex or set border
+                            color: hideWindow===undefined? 'black' : 'white'
+                        }}>
+                            {!hideWindow && <button className='rde-unselectable' style={{width:'14px', height:'14px'}}
                                 onClick={()=>{
                                     // syncWindowState();
                                     if ( isMinimisedLocally ) {
@@ -131,7 +134,10 @@ export default function WindowFrame({children, className, style, onClick, ...pro
                                 }
                             </button>}
                         </div>
-                        <div className={`${css.top_mid}`}
+                        <div className={`${css.top_mid}`} style={{
+                            backgroundColor:  'black',
+                            color: 'white'
+                        }}
                             // * this disables drag when maximised.
                             draggable={isMaximisedLocally? false : true}
                             onDragStart={(e)=>{

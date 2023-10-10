@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect, useRef } from 'react';
 import { WindowManagerRegistryContext, WindowManagerContext, WindowManagerProvider } from 'react-window-manager';
-import { Desktop, Start, Window } from './lib';
+import { Desktop, Start, Window, WindowFrame } from './lib';
 import Inception from './exampleComponents/Inception';
 
 function AppFragment() {
@@ -11,8 +11,8 @@ function AppFragment() {
     const idRef = useRef()
     return (<>
         <Desktop style={{ width: '100vw', height: 'calc( 100vh - 30px - 2px )', backgroundColor: 'white'}}>
-            {/* <WindowWithContext />
-            <Window /> */}
+            <WindowFrame />
+            <Window />
             <input onChange={(e)=>{ idRef.current = e.target.value }}></input><br/>
             <button onClick={()=>{
                 if ( idRef.current === undefined ) {
