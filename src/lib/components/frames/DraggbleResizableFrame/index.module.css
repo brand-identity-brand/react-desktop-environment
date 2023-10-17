@@ -1,4 +1,5 @@
 .windowGrid {
+    z-index: 0;
     /* Grid/window should be absolute, but their container should probably be relative */
     position: absolute;
 
