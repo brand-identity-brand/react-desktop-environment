@@ -44,7 +44,7 @@ export default function DesktopEnvironmentProvider({components, children}){
             }
 
             .rde-material-symbols-outlined {
-                font-size: 16px;
+                font-size: 14px;
                 font-variation-settings:
                     'FILL' 0,
                     'wght' 600,

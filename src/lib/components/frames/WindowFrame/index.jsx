@@ -209,14 +209,14 @@ export default function WindowFrame({children, className, style, onClick, ...pro
                                     }
                                 }}
                             > 
-                                <span className={'material-symbols-outlined rde-material-symbols-outlined'}>{ isMaximisedLocally ? 'fullscreen_exit' : 'fullscreen'}</span>
+                                <span className={'material-symbols-outlined rde-material-symbols-outlined'} style={{fontSize:'12px'}}>{ isMaximisedLocally ? 'fullscreen_exit' : 'fullscreen'}</span>
                             </button> 
                             {closeWindow && <button className='rde-unselectable'
                                 onClick={()=>{
                                     closeWindow();
                                 }}
                             > 
-                                <span className={'material-symbols-outlined rde-material-symbols-outlined'}>{'close'}</span>
+                                <span className={`material-symbols-outlined rde-material-symbols-outlined ${css.close_span}`} >{'close'}</span>
                             </button>}
                         </div>
                     </div>
