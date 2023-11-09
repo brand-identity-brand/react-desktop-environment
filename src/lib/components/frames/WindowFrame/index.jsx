@@ -103,6 +103,7 @@ export default function WindowFrame({children, className, style, onClick, ...pro
                 return (<>
                     <div className={`${css.top} rde-unselectable ${classNames?.top}`}>
                         <div className={`${css.top_left}`} style={{
+                            // TODO: this causes problem in Next as client and server doesnt match
                             backgroundColor: hideWindow===undefined? '' : 'black', // this element is on the top level. omit bkgd colour or set zindex or set border
                             color: hideWindow===undefined? 'black' : 'white'
                         }}>
