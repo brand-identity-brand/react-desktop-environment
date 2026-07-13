@@ -1,64 +1,18 @@
 {
-    "name": "react-desktop-environment",
-    "version": "0.2.47",
-    "description": "",
-    "license": "ISC",
-    "author": "",
-    "keywords": [],
-    "files": [
-        "dist",
-        "README.md"
-    ],
-    "main": "./dist/react-desktop-environment.umd.js",
-    "module": "./dist/react-desktop-environment.es.js",
-    "exports": {
-        ".": {
-            "import": "./dist/react-desktop-environment.es.js",
-            "require": "./dist/react-desktop-environment.umd.js"
-        },
-        "./style": {
-            "import": "./dist/style.css",
-            "require": "./dist/style.css"
-        }
-    },
-    "scripts": {
-        "dev": "vite",
-        "build": "vite build",
-        "test": "vitest run",
-        "watch": "vitest",
-        "coverage": "vitest run --coverage"
-    },
-    "browserslist": {
-        "production": [
-            ">0.2%",
-            "not dead",
-            "not op_mini all"
-        ],
-        "development": [
-            "last 1 chrome version",
-            "last 1 firefox version",
-            "last 1 safari version"
-        ]
-    },
-    "devDependencies": {
-        "@testing-library/dom": "^9.2.0",
-        "@testing-library/react": "^14.0.0",
-        "@vitejs/plugin-react": "^4.0.0",
-        "c8": "^7.13.0",
-        "eslint": "^8.39.0",
-        "eslint-plugin-react": "^7.32.2",
-        "jsdom": "^22.0.0",
-        "react": "^18.2.0",
-        "react-dom": "^18.2.0",
-        "react-test-renderer": "^18.2.0",
-        "vite": "^4.3.4",
-        "vitest": "^0.30.1"
-    },
-    "dependencies": {
-        "react-window-manager": "^0.2.85"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/brand-identity-brand/react-desktop-environment.git"
-    }
+  "name": "react-desktop-environment-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run build --workspace react-desktop-environment && npm run dev --workspace @react-desktop-environment/demo",
+    "build": "npm run build --workspace react-desktop-environment && npm run build --workspace @react-desktop-environment/demo",
+    "test": "npm run test --workspace react-desktop-environment"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brand-identity-brand/react-desktop-environment.git"
+  },
+  "license": "ISC"
 }

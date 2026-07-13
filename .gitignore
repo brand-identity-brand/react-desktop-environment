@@ -1,11 +1,11 @@
 # dependencies
-/node_modules
+node_modules
 
 # testing
 /coverage
 
-# component build
-/dist
+# workspace builds
+dist
 
 # misc
 .DS_Store
