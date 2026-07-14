@@ -65,22 +65,27 @@ independently, such as:
 File count should reveal the software architecture, not hide the length of an
 implementation.
 
-## Match File Names to Exports
+## Match File Names to Default Exports
 
-A file name should match its primary export as closely as the language and file
-type allow.
+Following the [one-abstraction-per-file convention](./file-structure.md#files-represent-abstractions),
+a file that represents one primary abstraction should default-export a named
+function, class, or component whose name matches the filename as closely as the
+language and file type allow.
 
 Prefer:
 
-```text
-createCompositor.js  -> createCompositor
-CompositorProvider.jsx -> CompositorProvider
-WorkspaceComposer.jsx  -> WorkspaceComposer
+```js
+// createCompositor.js
+export default function createCompositor() {}
+
+// SurfaceComposer.jsx
+export default function SurfaceComposer() {}
 ```
 
 Avoid vague names such as `utils`, `helpers`, or `manager` when the exported
-concept has a more precise name. When a file intentionally exposes one grouped
-public interface, its name should identify that interface.
+concept has a more precise name. Named exports are appropriate when a module
+intentionally exposes a cohesive collection or grouped public interface; its
+filename should identify that collection or interface.
 
 Names should communicate ownership and lifecycle consistently instead of
 growing a flat collection of specialized verbs.
@@ -89,10 +94,10 @@ growing a flat collection of specialized verbs.
 
 Names and locations should reveal ownership:
 
-- `window-manager` is a headless surface relationship engine;
+- `window-manager` owns logical windows and their parent relationships;
 - `window-manager/react` is its official React consumption interface;
-- `compositor` consumes that interface, owns applications and windows, and
-  coordinates their presentation;
+- `compositor` consumes the headless manager, owns applications and surfaces,
+  and coordinates their presentation;
 - `ui` is the replaceable visual implementation of the compositor contract.
 
 The headless window manager must not import React or render UI. Its optional
@@ -127,21 +132,24 @@ machinery rather than the concept.
 ## Preserve Record Ownership
 
 Do not mutate, decorate, spread, or reshape objects returned by another
-abstraction. Keep consumer-owned information in a consumer-owned record and
-join the records through a stable key.
+abstraction. Keep consumer-owned information in a consumer-owned record. A
+composed record may retain explicit relationship identities and resolved object
+references, but it must never change either source record.
 
 Prefer:
 
 ```js
-const surface = managerSnapshot.surfaces[surfaceId]
-const window = compositorSnapshot.windows[surfaceId]
+const window = managerSnapshot.windows[windowId]
+const surface = compositorSnapshot.surfaces[surfaceId]
+
+surface.window === window
 ```
 
 Avoid:
 
 ```js
-compositorSnapshot.windows[surfaceId] = {
-  ...managerSnapshot.surfaces[surfaceId],
+compositorSnapshot.surfaces[surfaceId] = {
+  ...managerSnapshot.windows[windowId],
   zIndex: 10,
 }
 ```

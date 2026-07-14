@@ -10,84 +10,128 @@ const createSystems = () => {
     windowManager,
     createId,
     applicationRegistry: { Example: () => null },
+    surfaceComponentRegistry: { DefaultSurface: ({ children }) => children },
+    defaultSurfaceComponentName: 'DefaultSurface',
   })
   return { windowManager, compositor }
 }
 
-describe('createCompositor', () => {
-  it('owns applications and relates windows directly to them', () => {
-    const { windowManager, compositor } = createSystems()
-    const { applicationId, surfaceId } = compositor.application.run({
-      registeredApplicationName: 'Example',
-      payload: { documentId: 'document:1' },
-    })
+const addWindow = (windowManager, input) =>
+  windowManager.window.add({ window: windowManager.window.create(input) })
 
-    expect(compositor.getSnapshot()).toEqual({
-      applications: {
-        [applicationId]: {
-          registeredApplicationName: 'Example',
-          payload: { documentId: 'document:1' },
-        },
-      },
-      windows: {
-        [surfaceId]: {
-          applicationId,
-          workspaceId: 'default',
-          zIndex: 1,
-          minimized: false,
-        },
-      },
-    })
-    expect(windowManager.getSnapshot()).toEqual({
-      surfaces: { [surfaceId]: { id: surfaceId, parentId: null } },
-    })
+const addApplication = (compositor, input = {}) =>
+  compositor.application.add({
+    application: compositor.application.create({
+      applicationName: 'Example',
+      ...input,
+    }),
   })
 
-  it('runs several window presentations for one application', () => {
+const addSurface = (compositor, input) =>
+  compositor.surface.add({ surface: compositor.surface.create(input) })
+
+describe('createCompositor', () => {
+  it('owns independently identified surfaces with resolved relationships', () => {
     const { windowManager, compositor } = createSystems()
-    const { applicationId, surfaceId: parentSurfaceId } =
-      compositor.application.run({ registeredApplicationName: 'Example' })
-    const childSurfaceId = compositor.window.run({
-      applicationId,
-      parentSurfaceId,
-      workspaceId: 'second',
+    const window = addWindow(windowManager)
+    const application = addApplication(compositor, { props: { title: 'Example' } })
+    const surface = addSurface(compositor, {
+      windowId: window.windowId,
+      applicationId: application.applicationId,
     })
 
-    expect(compositor.getSnapshot().windows[childSurfaceId]).toMatchObject({
-      applicationId,
-      workspaceId: 'second',
-      zIndex: 2,
+    expect(surface).toEqual({
+      surfaceId: expect.stringMatching(/^surface:/),
+      windowId: window.windowId,
+      window,
+      applicationId: application.applicationId,
+      application,
+      surfaceComponentName: 'DefaultSurface',
+      workspaceId: 'default',
+      zIndex: 1,
+      hidden: false,
+      props: {},
     })
-    expect(windowManager.getSnapshot().surfaces[childSurfaceId].parentId).toBe(
-      parentSurfaceId,
+    expect(surface.surfaceId).not.toBe(window.windowId)
+    expect(compositor.surface.read({ surfaceId: surface.surfaceId })).toBe(surface)
+  })
+
+  it('refreshes materialized surface links when related records change', () => {
+    const { windowManager, compositor } = createSystems()
+    const parentWindow = addWindow(windowManager)
+    const childWindow = addWindow(windowManager, {
+      parentWindowId: parentWindow.windowId,
+    })
+    const parentApplication = addApplication(compositor)
+    const childApplication = addApplication(compositor)
+    const parentSurface = addSurface(compositor, {
+      windowId: parentWindow.windowId,
+      applicationId: parentApplication.applicationId,
+    })
+    const childSurface = addSurface(compositor, {
+      windowId: childWindow.windowId,
+      applicationId: childApplication.applicationId,
+    })
+
+    expect(
+      compositor.surface.readChildren({ surfaceId: parentSurface.surfaceId }),
+    ).toEqual([childSurface])
+
+    const updatedApplication = compositor.application.update({
+      applicationId: childApplication.applicationId,
+      props: { title: 'Updated' },
+    })
+    const updatedSurface = compositor.surface.read({ surfaceId: childSurface.surfaceId })
+    expect(updatedSurface).not.toBe(childSurface)
+    expect(updatedSurface.application).toBe(updatedApplication)
+
+    const updatedWindow = windowManager.window.move({
+      windowId: childWindow.windowId,
+      parentWindowId: null,
+    })
+    expect(compositor.surface.read({ surfaceId: childSurface.surfaceId }).window).toBe(
+      updatedWindow,
+    )
+    expect(
+      compositor.surface.readChildren({ surfaceId: parentSurface.surfaceId }),
+    ).toEqual([])
+  })
+
+  it('preserves unrelated surface references', () => {
+    const { windowManager, compositor } = createSystems()
+    const firstWindow = addWindow(windowManager)
+    const secondWindow = addWindow(windowManager)
+    const firstApplication = addApplication(compositor)
+    const secondApplication = addApplication(compositor)
+    const firstSurface = addSurface(compositor, {
+      windowId: firstWindow.windowId,
+      applicationId: firstApplication.applicationId,
+    })
+    const secondSurface = addSurface(compositor, {
+      windowId: secondWindow.windowId,
+      applicationId: secondApplication.applicationId,
+    })
+
+    compositor.surface.update({ surfaceId: firstSurface.surfaceId, hidden: true })
+    expect(compositor.surface.read({ surfaceId: secondSurface.surfaceId })).toBe(
+      secondSurface,
     )
   })
 
-  it('updates one owned record without recreating another', () => {
-    const { compositor } = createSystems()
-    const first = compositor.application.run({ registeredApplicationName: 'Example' })
-    const second = compositor.application.run({ registeredApplicationName: 'Example' })
-    const secondWindow = compositor.getSnapshot().windows[second.surfaceId]
-
-    compositor.window.update(first.surfaceId, { minimized: true })
-
-    expect(compositor.getSnapshot().windows[first.surfaceId].minimized).toBe(true)
-    expect(compositor.getSnapshot().windows[second.surfaceId]).toBe(secondWindow)
-  })
-
-  it('stops owned records and can clean external orphans', () => {
+  it('reconciles removed windows and cleans unreferenced applications', () => {
     const { windowManager, compositor } = createSystems()
-    const first = compositor.application.run({ registeredApplicationName: 'Example' })
-    compositor.application.stop(first.applicationId)
-    expect(compositor.getSnapshot()).toEqual({ applications: {}, windows: {} })
+    const window = addWindow(windowManager)
+    const application = addApplication(compositor)
+    const surface = addSurface(compositor, {
+      windowId: window.windowId,
+      applicationId: application.applicationId,
+    })
 
-    const second = compositor.application.run({ registeredApplicationName: 'Example' })
-    windowManager.commands.closeSurface(second.surfaceId)
-    expect(compositor.getSnapshot().windows).toEqual({})
-    expect(compositor.getSnapshot().applications[second.applicationId]).toBeDefined()
+    windowManager.window.remove({ windowId: window.windowId })
+    expect(compositor.surface.read({ surfaceId: surface.surfaceId })).toBeUndefined()
     expect(compositor.cleanup()).toEqual({
-      removedWindowIds: [],
-      removedApplicationIds: [second.applicationId],
+      removedSurfaceIds: [],
+      removedApplicationIds: [application.applicationId],
     })
   })
 })

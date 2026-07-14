@@ -8,8 +8,42 @@ surfaces, or desktop state.
 `
 
 export {
-  DesktopHiddenWindow,
-  DesktopWindow,
-  DesktopWorkspace,
-  defaultCompositorConnectors,
+
+
 } from './stock.jsx'
+
+import { Fragment } from 'react';
+
+function Desktop({children, windows}){
+  return (
+    <Fragment>
+      {children}
+      {windows.map( window => Window({window}) )}
+    </Fragment>
+  )
+}
+
+function Window({window}){ //window component here
+  const {  } = window;
+  return (
+    <div
+      // ! all naative html props should use props."key"
+      style={props.style}
+    >
+      {children}
+    </div>
+  )
+}
+
+function ApplicationRenderer({application}){ //window component here
+  const { state } = application;
+  const { } = state;
+  return (
+    <div
+      // ! all naative html props should use props."key"
+      style={props.style}
+    >
+      {children}
+    </div>
+  )
+}

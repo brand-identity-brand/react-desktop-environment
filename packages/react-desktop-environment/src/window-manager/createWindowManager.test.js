@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createWindowManager } from './createWindowManager.js'
-import { selectChildSurfaces } from './selectors.js'
 
 const createTestManager = () => {
   let sequence = 0
-  return createWindowManager({ createId: () => `surface:${++sequence}` })
+  return createWindowManager({ createId: () => `window:${++sequence}` })
 }
+
+const addWindow = (manager, input) =>
+  manager.window.add({ window: manager.window.create(input) })
 
 describe('createWindowManager', () => {
   it('fails immediately without identity generation', () => {
@@ -17,44 +19,54 @@ describe('createWindowManager', () => {
     }
   })
 
-  it('owns only surface identity and parent relationships', () => {
+  it('creates records separately from adding them to the window table', () => {
     const manager = createTestManager()
-    const parentId = manager.commands.openSurface()
-    const childId = manager.commands.openSurface({ parentSurfaceId: parentId })
+    const parent = manager.window.create()
+    expect(manager.getSnapshot()).toEqual({ windows: {} })
+
+    manager.window.add({ window: parent })
+    const child = addWindow(manager, { parentWindowId: parent.windowId })
 
     expect(manager.getSnapshot()).toEqual({
-      surfaces: {
-        [parentId]: { id: parentId, parentId: null },
-        [childId]: { id: childId, parentId },
+      windows: {
+        [parent.windowId]: { windowId: parent.windowId, parentWindowId: null },
+        [child.windowId]: {
+          windowId: child.windowId,
+          parentWindowId: parent.windowId,
+        },
       },
     })
-    expect(selectChildSurfaces(parentId)(manager.getSnapshot())).toEqual([
-      manager.getSnapshot().surfaces[childId],
-    ])
+    expect(manager.window.readChildren({ windowId: parent.windowId })).toEqual([child])
   })
 
-  it('moves surfaces and rejects cycles', () => {
+  it('moves windows and rejects cycles', () => {
     const manager = createTestManager()
-    const parentId = manager.commands.openSurface()
-    const childId = manager.commands.openSurface({ parentSurfaceId: parentId })
-    expect(() => manager.commands.moveSurface(parentId, childId)).toThrow(/cycle/)
-    manager.commands.moveSurface(childId, null)
-    expect(manager.getSnapshot().surfaces[childId].parentId).toBeNull()
+    const parent = addWindow(manager)
+    const child = addWindow(manager, { parentWindowId: parent.windowId })
+    expect(() =>
+      manager.window.move({
+        windowId: parent.windowId,
+        parentWindowId: child.windowId,
+      }),
+    ).toThrow(/cycle/)
+    manager.window.move({ windowId: child.windowId, parentWindowId: null })
+    expect(manager.window.read({ windowId: child.windowId }).parentWindowId).toBeNull()
   })
 
-  it('closes an entire surface tree', () => {
+  it('removes an entire window tree', () => {
     const manager = createTestManager()
-    const parentId = manager.commands.openSurface()
-    manager.commands.openSurface({ parentSurfaceId: parentId })
-    expect(manager.commands.closeSurface(parentId)).toHaveLength(2)
-    expect(manager.getSnapshot()).toEqual({ surfaces: {} })
+    const parent = addWindow(manager)
+    addWindow(manager, { parentWindowId: parent.windowId })
+    expect(manager.window.remove({ windowId: parent.windowId })).toHaveLength(2)
+    expect(manager.getSnapshot()).toEqual({ windows: {} })
   })
 
-  it('preserves unchanged surface references', () => {
+  it('preserves unchanged records and cached child-list references', () => {
     const manager = createTestManager()
-    const firstId = manager.commands.openSurface()
-    const first = manager.getSnapshot().surfaces[firstId]
-    manager.commands.openSurface()
-    expect(manager.getSnapshot().surfaces[firstId]).toBe(first)
+    const first = addWindow(manager)
+    const roots = manager.window.readChildren()
+    addWindow(manager, { parentWindowId: first.windowId })
+    expect(manager.window.read({ windowId: first.windowId })).toBe(first)
+    expect(manager.window.readChildren()).toBe(roots)
   })
 })

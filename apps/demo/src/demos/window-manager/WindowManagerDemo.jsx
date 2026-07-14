@@ -1,7 +1,12 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
-import { createWindowManager, selectChildSurfaces } from 'react-desktop-environment/window-manager'
+import { useSyncExternalStore } from 'react'
+import { createWindowManager } from 'react-desktop-environment/window-manager'
 
 const windowManager = createWindowManager()
+
+const addWindow = (parentWindowId = null) =>
+  windowManager.window.add({
+    window: windowManager.window.create({ parentWindowId }),
+  })
 
 export function WindowManagerDemo() {
   const snapshot = useSyncExternalStore(
@@ -9,16 +14,7 @@ export function WindowManagerDemo() {
     windowManager.getSnapshot,
     windowManager.getSnapshot,
   )
-  const [events, setEvents] = useState([])
-  const rootSurfaces = selectChildSurfaces(null)(snapshot)
-
-  useEffect(
-    () =>
-      windowManager.subscribeEvents((event) => {
-        setEvents((current) => [event, ...current].slice(0, 10))
-      }),
-    [],
-  )
+  const rootWindows = windowManager.window.readChildren({ windowId: null })
 
   return (
     <main className="demo-layout">
@@ -28,66 +24,64 @@ export function WindowManagerDemo() {
           <p className="eyebrow">Headless relationship engine</p>
           <h1>Window manager</h1>
           <p className="lede">
-            The manager owns only surface identity, parent relationships, and
+            The manager owns logical window identity, parent relationships, and
             lifecycle. It knows nothing about applications or presentation.
           </p>
         </div>
-        <button
-          type="button"
-          className="primary-button"
-          onClick={() => windowManager.commands.openSurface()}
-        >
-          Open root surface
+        <button type="button" className="primary-button" onClick={() => addWindow()}>
+          Add root window
         </button>
       </header>
 
       <section className="manager-grid">
         <section className="relationship-panel">
           <div className="panel-heading">
-            <div><p className="eyebrow">Relationship table</p><h2>Surface tree</h2></div>
-            <span>{Object.keys(snapshot.surfaces).length} surfaces</span>
+            <div><p className="eyebrow">Relationship table</p><h2>Window tree</h2></div>
+            <span>{Object.keys(snapshot.windows).length} windows</span>
           </div>
           <div className="surface-tree">
-            {rootSurfaces.map((surface) => (
-              <SurfaceBranch key={surface.id} surface={surface} snapshot={snapshot} />
+            {rootWindows.map((window) => (
+              <WindowBranch key={window.windowId} window={window} />
             ))}
-            {rootSurfaces.length === 0 ? (
-              <div className="empty-state">Open a surface to begin a relationship tree.</div>
+            {rootWindows.length === 0 ? (
+              <div className="empty-state">Add a window to begin a relationship tree.</div>
             ) : null}
           </div>
         </section>
 
         <aside className="inspector-panel">
-          <div className="panel-heading"><div><p className="eyebrow">Callback subscription</p><h2>Manager events</h2></div></div>
-          <ol className="event-list">
-            {events.map((event, index) => (
-              <li key={`${event.type}:${index}`}><code>{event.type}</code></li>
-            ))}
-          </ol>
-          <div className="snapshot-summary"><h3>Current snapshot</h3><pre>{JSON.stringify(snapshot, null, 2)}</pre></div>
+          <div className="panel-heading"><h2>Manager snapshot</h2></div>
+          <div className="snapshot-summary"><pre>{JSON.stringify(snapshot, null, 2)}</pre></div>
         </aside>
       </section>
     </main>
   )
 }
 
-function SurfaceBranch({ surface, snapshot }) {
-  const children = selectChildSurfaces(surface.id)(snapshot)
+function WindowBranch({ window }) {
+  const children = windowManager.window.readChildren({ windowId: window.windowId })
   return (
     <article className="surface-branch">
       <div className="surface-record">
         <div>
-          <strong>{shortId(surface.id)}</strong>
-          <small>parent: {shortId(surface.parentId) ?? 'root'}</small>
+          <strong>{shortId(window.windowId)}</strong>
+          <small>parent: {shortId(window.parentWindowId) ?? 'root'}</small>
         </div>
         <div className="record-actions">
-          <button type="button" onClick={() => windowManager.commands.openSurface({ parentSurfaceId: surface.id })}>Open child</button>
-          <button type="button" onClick={() => windowManager.commands.closeSurface(surface.id)}>Close surface</button>
+          <button type="button" onClick={() => addWindow(window.windowId)}>Add child</button>
+          <button
+            type="button"
+            onClick={() => windowManager.window.remove({ windowId: window.windowId })}
+          >
+            Remove window
+          </button>
         </div>
       </div>
       {children.length ? (
         <div className="surface-children">
-          {children.map((child) => <SurfaceBranch key={child.id} surface={child} snapshot={snapshot} />)}
+          {children.map((child) => (
+            <WindowBranch key={child.windowId} window={child} />
+          ))}
         </div>
       ) : null}
     </article>

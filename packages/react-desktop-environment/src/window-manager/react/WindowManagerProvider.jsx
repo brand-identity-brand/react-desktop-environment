@@ -6,7 +6,7 @@ const requireManager = (manager) => {
     !manager ||
     typeof manager.getSnapshot !== 'function' ||
     typeof manager.subscribe !== 'function' ||
-    !manager.commands
+    !manager.window
   ) {
     throw new TypeError('WindowManagerProvider requires a window manager')
   }

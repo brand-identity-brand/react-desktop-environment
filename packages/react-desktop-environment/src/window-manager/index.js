@@ -1,12 +1,6 @@
+export const INFO = `
+The window manager owns logical window identity, lifecycle, and parent
+relationships. It does not own presentation state.
+`
+
 export { createWindowManager } from './createWindowManager.js'
-export {
-  WindowManagerCommandType,
-  createCloseSurfaceCommand,
-  createMoveSurfaceCommand,
-  createOpenSurfaceCommand,
-} from './commands.js'
-export {
-  selectChildSurfaces,
-  selectSurface,
-  selectSurfaces,
-} from './selectors.js'

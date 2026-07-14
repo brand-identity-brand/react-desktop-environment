@@ -61,8 +61,8 @@ function DemoDirectory({ unknownPath }) {
           <span className="eyebrow">Headless external state</span>
           <strong>Window manager</strong>
           <p>
-            Inspect applications, surfaces, parent relationships, commands, and
-            callback events without a desktop presentation.
+            Inspect logical windows, parent relationships, and lifecycle
+            operations without applications or desktop presentation.
           </p>
           <span className="directory-link">Open demo →</span>
         </a>

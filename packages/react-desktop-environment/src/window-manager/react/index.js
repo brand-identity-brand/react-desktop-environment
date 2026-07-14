@@ -1,13 +1,13 @@
-export { SurfaceProvider } from './SurfaceProvider.jsx'
 export { WindowManagerProvider } from './WindowManagerProvider.jsx'
+export { WindowProvider } from './WindowProvider.jsx'
 export {
-  useChildSurfaces,
-  useCurrentSurface,
-  useCurrentSurfaceId,
-  useParentSurface,
-  useRootSurfaces,
-  useSurface,
-  useSurfaceController,
+  useChildWindows,
+  useCurrentWindow,
+  useCurrentWindowId,
+  useParentWindow,
+  useRootWindows,
+  useWindow,
+  useWindowController,
   useWindowManager,
   useWindowManagerSelector,
   useWindowManagerSnapshot,

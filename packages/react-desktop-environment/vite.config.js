@@ -19,9 +19,6 @@ export default defineConfig({
         compositor: fileURLToPath(
           new URL('./src/compositor/index.js', import.meta.url),
         ),
-        ui: fileURLToPath(
-          new URL('./src/ui/index.js', import.meta.url),
-        ),
       },
       name: 'ReactDesktopEnvironment',
       formats: ['es', 'cjs'],

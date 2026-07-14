@@ -26,10 +26,6 @@
     "./compositor": {
       "import": "./dist/compositor.js",
       "require": "./dist/compositor.cjs"
-    },
-    "./ui": {
-      "import": "./dist/ui.js",
-      "require": "./dist/ui.cjs"
     }
   },
   "scripts": {

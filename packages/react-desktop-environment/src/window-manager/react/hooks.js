@@ -1,6 +1,9 @@
 import { useCallback, useContext, useMemo, useSyncExternalStore } from 'react'
-import { selectChildSurfaces, selectSurface } from '../selectors.js'
-import { SurfaceIdContext, WindowManagerContext } from './contexts.js'
+import { WindowIdContext, WindowManagerContext } from './contexts.js'
+
+const sameRecords = (previous, next) =>
+  previous.length === next.length &&
+  previous.every((record, index) => record === next[index])
 
 export const useWindowManager = () => {
   const manager = useContext(WindowManagerContext)
@@ -16,7 +19,7 @@ export const useWindowManagerSelector = (selector, isEqual = Object.is) => {
     return () => {
       const snapshot = manager.getSnapshot()
       if (snapshot === previousSnapshot) return previousSelection
-      const selection = selector(snapshot)
+      const selection = selector(manager, snapshot)
       if (previousSnapshot !== undefined && isEqual(previousSelection, selection)) {
         previousSnapshot = snapshot
         return previousSelection
@@ -34,69 +37,84 @@ export const useWindowManagerSnapshot = () => {
   return useSyncExternalStore(manager.subscribe, manager.getSnapshot, manager.getSnapshot)
 }
 
-export const useCurrentSurfaceId = () => {
-  const surfaceId = useContext(SurfaceIdContext)
-  if (surfaceId === undefined) {
-    throw new Error('useCurrentSurfaceId must be used within SurfaceProvider')
+export const useCurrentWindowId = () => {
+  const windowId = useContext(WindowIdContext)
+  if (windowId === undefined) {
+    throw new Error('useCurrentWindowId must be used within WindowProvider')
   }
-  return surfaceId
+  return windowId
 }
 
-export const useSurface = (surfaceId) => {
-  const selector = useMemo(() => selectSurface(surfaceId), [surfaceId])
+export const useWindow = (windowId) => {
+  const selector = useMemo(
+    () => (manager) => manager.window.read({ windowId }),
+    [windowId],
+  )
   return useWindowManagerSelector(selector)
 }
 
-export const useCurrentSurface = () => useSurface(useCurrentSurfaceId())
+export const useCurrentWindow = () => useWindow(useCurrentWindowId())
 
-export const useChildSurfaces = (parentSurfaceId) => {
-  const contextSurfaceId = useContext(SurfaceIdContext)
-  const resolvedParentId = parentSurfaceId === undefined ? contextSurfaceId : parentSurfaceId
-  if (resolvedParentId === undefined) {
-    throw new Error('useChildSurfaces requires a parentSurfaceId or SurfaceProvider')
+export const useChildWindows = (parentWindowId) => {
+  const contextWindowId = useContext(WindowIdContext)
+  const windowId = parentWindowId === undefined ? contextWindowId : parentWindowId
+  if (windowId === undefined) {
+    throw new Error('useChildWindows requires a windowId or WindowProvider')
   }
   const selector = useMemo(
-    () => selectChildSurfaces(resolvedParentId),
-    [resolvedParentId],
+    () => (manager) => manager.window.readChildren({ windowId }),
+    [windowId],
   )
   return useWindowManagerSelector(selector, sameRecords)
 }
 
-export const useRootSurfaces = () => {
-  const selector = useMemo(() => selectChildSurfaces(null), [])
+export const useRootWindows = () => {
+  const selector = useMemo(
+    () => (manager) => manager.window.readChildren({ windowId: null }),
+    [],
+  )
   return useWindowManagerSelector(selector, sameRecords)
 }
 
-export const useParentSurface = () => {
-  const surface = useCurrentSurface()
-  return useSurface(surface?.parentId)
+export const useParentWindow = () => {
+  const window = useCurrentWindow()
+  return useWindow(window?.parentWindowId)
 }
 
-export const useSurfaceController = () => {
+export const useWindowController = () => {
   const manager = useWindowManager()
-  const surfaceId = useCurrentSurfaceId()
-  const surface = useSurface(surfaceId)
-  const parentSurface = useSurface(surface?.parentId)
-  const childSurfaces = useChildSurfaces(surfaceId)
-  const run = useCallback(
-    (input = {}) => manager.commands.openSurface({ ...input, parentSurfaceId: surfaceId }),
-    [manager, surfaceId],
+  const windowId = useCurrentWindowId()
+  const window = useWindow(windowId)
+  const parentWindow = useWindow(window?.parentWindowId)
+  const childWindows = useChildWindows(windowId)
+  const create = useCallback(
+    (input = {}) => manager.window.create({ ...input, parentWindowId: windowId }),
+    [manager, windowId],
+  )
+  const add = useCallback(
+    (record) => manager.window.add({ window: record }),
+    [manager],
   )
   const move = useCallback(
-    (parentSurfaceId = null) => manager.commands.moveSurface(surfaceId, parentSurfaceId),
-    [manager, surfaceId],
+    (parentWindowId = null) => manager.window.move({ windowId, parentWindowId }),
+    [manager, windowId],
   )
-  const stop = useCallback(
-    () => manager.commands.closeSurface(surfaceId),
-    [manager, surfaceId],
+  const remove = useCallback(
+    () => manager.window.remove({ windowId }),
+    [manager, windowId],
   )
 
   return useMemo(
-    () => ({ surfaceId, surface, parentSurface, childSurfaces, run, move, stop }),
-    [surfaceId, surface, parentSurface, childSurfaces, run, move, stop],
+    () => ({
+      windowId,
+      window,
+      parentWindow,
+      childWindows,
+      create,
+      add,
+      move,
+      remove,
+    }),
+    [windowId, window, parentWindow, childWindows, create, add, move, remove],
   )
 }
-
-const sameRecords = (previous, next) =>
-  previous.length === next.length &&
-  previous.every((record, index) => record === next[index])

@@ -1,110 +1,70 @@
 # react-desktop-environment
 
-A surface relationship engine, application compositor, and replaceable React
-desktop interface.
+A logical window manager and compositor with replaceable React presentation.
 
-## Installation
+## Window manager
 
-```sh
-npm install react-desktop-environment
-```
+The manager owns logical window identity, lifecycle, and parent relationships.
+Creating a record and adding it to the table are intentionally separate.
 
-## Bootstrap a desktop
-
-```jsx
-import { useState } from 'react'
-import {
-  CompositorProvider,
-  WorkspaceComposer,
-  createCompositor,
-} from 'react-desktop-environment/compositor'
+```js
 import { createWindowManager } from 'react-desktop-environment/window-manager'
-import { defaultCompositorConnectors } from 'react-desktop-environment/ui'
-
-const applicationRegistry = {
-  NotesApplication,
-}
 
 const windowManager = createWindowManager()
+const rootWindow = windowManager.window.create()
+windowManager.window.add({ window: rootWindow })
+
+const childWindow = windowManager.window.create({
+  parentWindowId: rootWindow.windowId,
+})
+windowManager.window.add({ window: childWindow })
+```
+
+## Compositor
+
+The compositor owns applications and independently identified surfaces. A
+surface links a current window object to a current application object and adds
+presentation state without changing either source record.
+
+```js
+import {
+  SurfaceComposer,
+  createCompositor,
+} from 'react-desktop-environment/compositor'
+
 const compositor = createCompositor({
   windowManager,
-  applicationRegistry,
+  applicationRegistry: { NotesApplication },
+  surfaceComponentRegistry: { DesktopSurface },
+  defaultSurfaceComponentName: 'DesktopSurface',
 })
 
-compositor.application.run({
-  registeredApplicationName: 'NotesApplication',
-  payload: { documentId: 'document:1' },
+const application = compositor.application.create({
+  applicationName: 'NotesApplication',
+  props: { documentId: 'document:1' },
 })
+compositor.application.add({ application })
 
-export default function Desktop() {
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState('default')
-
-  return (
-    <CompositorProvider
-      compositor={compositor}
-      connectors={defaultCompositorConnectors}
-    >
-      <WorkspaceComposer activeWorkspaceId={activeWorkspaceId} />
-    </CompositorProvider>
-  )
-}
-```
-
-Consumers explicitly connect the compositor to the stock UI or their own
-compatible connectors. The compositor never imports the stock interface.
-
-## Compositor operations
-
-```js
-const { application, window } = compositor
-
-const { applicationId, surfaceId } = application.run({
-  registeredApplicationName: 'NotesApplication',
-  payload: { documentId: 'document:1' },
+const surface = compositor.surface.create({
+  windowId: childWindow.windowId,
+  applicationId: application.applicationId,
 })
-
-const secondSurfaceId = window.run({
-  applicationId,
-  workspaceId: 'second',
-})
-
-application.update(applicationId, { payload: nextPayload })
-window.update(surfaceId, { minimized: true })
-window.stop(secondSurfaceId)
-application.stop(applicationId)
+compositor.surface.add({ surface })
 ```
 
-`run` adds an owned record, `stop` removes one, and `update` replaces one while
-preserving unrelated record references. `cleanup()` removes compositor windows
-whose surfaces no longer exist and applications no longer referenced by any
-window.
+`SurfaceComposer` receives its stable dependencies explicitly. It uses no
+context and subscribes directly to the child surfaces of the supplied surface.
 
-## Ownership
-
-The window manager owns only surfaces and parent relationships:
-
-```js
-surfaces[surfaceId] = { id, parentId }
+```jsx
+<SurfaceComposer
+  compositor={compositor}
+  surfaceId={rootSurface.surfaceId}
+>
+  <DesktopControls />
+</SurfaceComposer>
 ```
 
-The compositor owns applications and windows:
-
-```js
-applications[applicationId] = {
-  registeredApplicationName,
-  payload,
-}
-
-windows[surfaceId] = {
-  applicationId,
-  workspaceId,
-  zIndex,
-  minimized,
-  position,
-  size,
-}
-```
-
-Workspace and minimization change presentation visibility without determining
-whether an application is mounted. Closing a surface or stopping an application
-ends its presentation lifecycle.
+The compositor preserves unchanged record references. Updating a window or
+application replaces only surfaces linked to that record. Hidden and inactive
+workspace surfaces remain composed so their application-local React state can
+remain mounted.
