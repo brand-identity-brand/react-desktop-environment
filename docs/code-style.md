@@ -55,3 +55,30 @@ consumer that uses them.
 Do not introduce a shared abstraction merely because two implementations use
 the same technology. Extract one only when the software architecture identifies
 a stable shared responsibility.
+
+## Preserve Record Ownership
+
+Do not mutate, decorate, spread, or reshape objects returned by another
+abstraction. Keep consumer-owned information in a consumer-owned record and
+join the records through a stable key.
+
+Prefer:
+
+```js
+const surface = managerSnapshot.surfaces[surfaceId]
+const window = desktopSnapshot.windows[surfaceId]
+```
+
+Avoid:
+
+```js
+desktopSnapshot.windows[surfaceId] = {
+  ...managerSnapshot.surfaces[surfaceId],
+  zIndex: 10,
+}
+```
+
+Returned snapshots are read-only by contract. State commands should replace
+only changed records and preserve references to unchanged records. Do not use
+full-record cloning or refreezing as a substitute for clear ownership and
+structural sharing.

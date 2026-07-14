@@ -68,6 +68,31 @@ The desktop environment owns window records, workspaces, geometry, stacking,
 focus, visibility, dragging, and resizing. Its state is keyed by stable surface
 IDs from the window manager.
 
+### Record ownership and joins
+
+Each system keeps the exact shape of the records it owns. A consumer must not
+mutate, extend, spread, or reshape a record supplied by another system.
+Consumers join their own records to foreign records through stable object keys.
+
+```js
+windowManagerSnapshot.surfaces[surfaceId] = {
+  id,
+  applicationId,
+  parentId,
+}
+
+desktopSnapshot.windows[surfaceId] = {
+  workspaceId,
+  position,
+  size,
+  zIndex,
+  minimized,
+}
+```
+
+The shared `surfaceId` key is the relationship. The desktop record does not
+copy the surface, repeat its ID as a field, or add desktop properties to it.
+
 ### Other consumers
 
 Mobile, embedded, server, or non-React consumers may subscribe to the same
@@ -113,18 +138,38 @@ The window manager may carry an optional application payload so a consumer can
 provide it to its resolved application. The window manager does not define or
 interpret that payload's shape.
 
-Presentation records are separate:
+Presentation records are separate and keyed by the related surface ID:
 
 ```js
-desktopWindow = {
-  surfaceId,
-  workspaceId,
-  position,
-  size,
-  zIndex,
-  minimized,
+windows = {
+  [surfaceId]: {
+    workspaceId,
+    position,
+    size,
+    zIndex,
+    minimized,
+  },
 }
 ```
+
+## Persistence and Initialization
+
+The desktop environment persists its own records separately from the window
+manager. During initialization it removes entries without current surfaces,
+adds defaults for new surfaces, and normalizes saved z-index values while
+preserving their relative order. Normalization happens before rendering, not on
+every focus update.
+
+## Snapshot Identity
+
+Snapshots are read-only by contract. Consumers must not mutate records they do
+not own. Commands replace only the records they change, while unchanged records
+retain their object references.
+
+This structural sharing allows a subscriber to select one record and avoid a
+rerender when another record changes. `Object.freeze()` may be used as a
+development safeguard, but defensive cloning or refreezing every record is not
+the architecture's immutability mechanism.
 
 ## Consumer Rendering and State
 
