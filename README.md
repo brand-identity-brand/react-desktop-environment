@@ -1,8 +1,11 @@
 # React Desktop Environment
 
-This repository is an npm-workspaces monorepo containing a React component library and a separate Vite demo app.
+This repository is an npm-workspaces monorepo containing a React desktop-environment library and a separate Vite demo app.
 
-The `react-desktop-environment` library is at version `1.0.0` and currently exports one component: `Button`.
+The `react-desktop-environment` library is at version `1.0.0`. It contains a
+headless window manager and a React desktop environment that consumes it. The
+window manager owns application and surface relationships but contains no React
+or presentation behavior.
 
 ## Commands
 

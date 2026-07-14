@@ -1,0 +1,293 @@
+:root {
+  color: #182019;
+  background: #edf1e9;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button {
+  border: 1px solid #aeb8ad;
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.8rem;
+  color: inherit;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: #536c55;
+  background: #f5f8f3;
+}
+
+.demo-layout {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: 3rem;
+}
+
+.demo-header,
+.panel-heading,
+.desktop-window-titlebar,
+.window-footer,
+.taskbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.demo-header {
+  align-items: flex-end;
+  margin-bottom: 2rem;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0.5rem;
+  font-size: clamp(2rem, 4vw, 3.75rem);
+  letter-spacing: -0.05em;
+}
+
+h2 {
+  margin-bottom: 0;
+  font-size: 1.15rem;
+}
+
+.eyebrow {
+  margin-bottom: 0.4rem;
+  color: #607060;
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.lede {
+  max-width: 720px;
+  margin-bottom: 0;
+  color: #576158;
+  line-height: 1.55;
+}
+
+.primary-button {
+  border-color: #173d21;
+  color: #fff;
+  background: #173d21;
+  font-weight: 700;
+}
+
+.primary-button:hover {
+  color: #fff;
+  background: #24512f;
+}
+
+.manager-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 1rem;
+}
+
+.desktop-panel,
+.inspector-panel {
+  overflow: hidden;
+  border: 1px solid #cbd3c8;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 20px 60px rgba(44, 61, 46, 0.08);
+}
+
+.panel-heading {
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid #d7ddd4;
+}
+
+.panel-heading span {
+  color: #607060;
+  font-size: 0.85rem;
+}
+
+.desktop-canvas {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  align-content: start;
+  gap: 1rem;
+  min-height: 540px;
+  padding: 1rem;
+  background-color: #dce5d8;
+  background-image: radial-gradient(#b9c7b5 0.8px, transparent 0.8px);
+  background-size: 18px 18px;
+}
+
+.desktop-window {
+  position: relative;
+  align-self: start;
+  overflow: hidden;
+  border: 1px solid #9da99b;
+  border-radius: 0.75rem;
+  background: #fff;
+  box-shadow: 0 16px 30px rgba(31, 48, 34, 0.16);
+}
+
+.desktop-window-titlebar {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid #dce1da;
+  background: #f4f6f2;
+}
+
+.desktop-window-titlebar small {
+  display: block;
+  margin-top: 0.15rem;
+  color: #718072;
+}
+
+.desktop-window-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.desktop-window-actions button,
+.window-footer button,
+.taskbar button {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.desktop-window-content {
+  padding: 1rem;
+}
+
+.window-footer {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-top: 1px solid #e1e5df;
+}
+
+.child-window-region {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.example-application p {
+  color: #5b665c;
+  line-height: 1.5;
+}
+
+.example-application dl {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.example-application dl div {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+}
+
+.example-application dt {
+  color: #718072;
+}
+
+.example-application dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.taskbar {
+  justify-content: flex-start;
+  min-height: 54px;
+  padding: 0.7rem 1rem;
+  border-top: 1px solid #cbd3c8;
+}
+
+.taskbar span {
+  color: #718072;
+}
+
+.empty-state {
+  display: grid;
+  min-height: 420px;
+  place-items: center;
+  color: #647066;
+  text-align: center;
+}
+
+.inspector-panel {
+  align-self: start;
+}
+
+.event-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event-list li {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.8rem 1.2rem;
+  border-bottom: 1px solid #e1e5df;
+}
+
+.event-list code {
+  color: #24512f;
+  font-weight: 700;
+}
+
+.event-list span {
+  color: #718072;
+  font-size: 0.82rem;
+}
+
+.snapshot-summary {
+  padding: 1.2rem;
+}
+
+.snapshot-summary pre {
+  overflow: auto;
+  max-height: 340px;
+  margin: 0;
+  padding: 0.8rem;
+  border-radius: 0.6rem;
+  color: #d9edda;
+  background: #172019;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .demo-layout {
+    padding: 1.5rem;
+  }
+
+  .demo-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .manager-grid {
+    grid-template-columns: 1fr;
+  }
+}

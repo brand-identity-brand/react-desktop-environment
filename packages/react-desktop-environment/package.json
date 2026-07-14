@@ -1,7 +1,7 @@
 {
   "name": "react-desktop-environment",
   "version": "1.0.0",
-  "description": "React component library",
+  "description": "Headless window manager with a React desktop environment",
   "license": "ISC",
   "type": "module",
   "files": [

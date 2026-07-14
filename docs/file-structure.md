@@ -7,7 +7,7 @@ react-desktop-environment/
 ├── apps/
 │   └── demo/                         # Vite React demo; never published
 │       ├── src/
-│       │   ├── App.jsx               # Demo UI
+│       │   ├── App.jsx               # Manager showcase and demo presentation
 │       │   └── main.jsx              # Demo application entry
 │       ├── index.html
 │       ├── package.json
@@ -15,9 +15,12 @@ react-desktop-environment/
 ├── packages/
 │   └── react-desktop-environment/    # Published component library
 │       ├── src/
-│       │   ├── Button.jsx            # Plain HTML button component
+│       │   ├── window-manager/        # Headless external relationship state
+│       │   ├── desktop-environment/   # Desktop state and manager consumption
+│       │   │   └── ui/                # React desktop components
+│       │   ├── Button.jsx             # Plain HTML button component
 │       │   ├── Button.test.jsx
-│       │   └── index.js              # Public library entry
+│       │   └── index.js               # Public library entry
 │       ├── package.json              # Library name and version
 │       └── vite.config.js            # Library build configuration
 ├── docs/
@@ -28,13 +31,20 @@ react-desktop-environment/
 
 ## Library workspace
 
-`packages/react-desktop-environment` is the only publishable package. Its `src/index.js` file defines the complete public API. At version `1.0.0`, that API contains only the named `Button` export.
+`packages/react-desktop-environment` is the only publishable package. Its
+`src/index.js` file defines the complete public API. `window-manager` is a
+headless external state manager. `desktop-environment` consumes its snapshots
+and owns desktop presentation state, while `desktop-environment/ui` renders that
+desktop using React.
 
 The library build treats React as a peer dependency, so applications provide their own React installation. Running the workspace build writes publishable files to `packages/react-desktop-environment/dist`.
 
 ## Demo workspace
 
-`apps/demo` is a private Vite application for developing and manually checking the library. It imports `react-desktop-environment` through the npm workspace link, in the same style as an external consumer.
+`apps/demo` is a private Vite application for developing and manually checking
+the library. It imports `react-desktop-environment` through the npm workspace
+link, in the same style as an external consumer. It supplies application
+resolution and payload interfaces to the desktop environment.
 
 Demo code must stay inside `apps/demo`. It is not part of the library build and is not included when the component package is published.
 
