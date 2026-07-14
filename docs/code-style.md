@@ -42,6 +42,49 @@ If a group is important enough to be understood as its own abstraction or
 public interface, give it a descriptive folder first. Implementation-specific
 subfolders may then exist inside that boundary.
 
+## Prefer Cohesion Over Short Files
+
+Do not extract private implementation into separate files merely to reduce the
+length of the owning file.
+
+Keep behavior together when it belongs to one abstraction, shares the same
+state and invariants, and is consumed only by one implementation entry point. A
+long cohesive file is preferable to several small files that make internal
+machinery appear to be independent architecture.
+
+Create another file or folder when the extracted concept has a reason to exist
+independently, such as:
+
+- it is a separately named framework abstraction;
+- it is a public consumer interface;
+- it has independent ownership or invariants;
+- it is consumed by multiple implementations;
+- its technology-specific implementation belongs beneath an established
+  abstraction.
+
+File count should reveal the software architecture, not hide the length of an
+implementation.
+
+## Match File Names to Exports
+
+A file name should match its primary export as closely as the language and file
+type allow.
+
+Prefer:
+
+```text
+createCompositor.js  -> createCompositor
+CompositorProvider.jsx -> CompositorProvider
+WorkspaceComposer.jsx  -> WorkspaceComposer
+```
+
+Avoid vague names such as `utils`, `helpers`, or `manager` when the exported
+concept has a more precise name. When a file intentionally exposes one grouped
+public interface, its name should identify that interface.
+
+Names should communicate ownership and lifecycle consistently instead of
+growing a flat collection of specialized verbs.
+
 ## Keep Boundaries Visible
 
 Names and locations should reveal ownership:
