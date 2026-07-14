@@ -1,9 +1,7 @@
 export { SurfaceProvider } from './SurfaceProvider.jsx'
 export { WindowManagerProvider } from './WindowManagerProvider.jsx'
 export {
-  useApplication,
   useChildSurfaces,
-  useCurrentApplication,
   useCurrentSurface,
   useCurrentSurfaceId,
   useParentSurface,

@@ -16,8 +16,11 @@ export default defineConfig({
         'window-manager-react': fileURLToPath(
           new URL('./src/window-manager/react/index.js', import.meta.url),
         ),
-        'desktop-environment': fileURLToPath(
-          new URL('./src/desktop-environment/index.js', import.meta.url),
+        compositor: fileURLToPath(
+          new URL('./src/compositor/index.js', import.meta.url),
+        ),
+        ui: fileURLToPath(
+          new URL('./src/ui/index.js', import.meta.url),
         ),
       },
       name: 'ReactDesktopEnvironment',

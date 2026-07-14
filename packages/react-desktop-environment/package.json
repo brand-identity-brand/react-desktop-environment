@@ -1,7 +1,7 @@
 {
   "name": "react-desktop-environment",
   "version": "1.0.0",
-  "description": "Headless window manager with a React desktop environment",
+  "description": "Headless window manager with a desktop compositor and replaceable React UI",
   "license": "ISC",
   "type": "module",
   "files": [
@@ -23,9 +23,13 @@
       "import": "./dist/window-manager-react.js",
       "require": "./dist/window-manager-react.cjs"
     },
-    "./desktop-environment": {
-      "import": "./dist/desktop-environment.js",
-      "require": "./dist/desktop-environment.cjs"
+    "./compositor": {
+      "import": "./dist/compositor.js",
+      "require": "./dist/compositor.cjs"
+    },
+    "./ui": {
+      "import": "./dist/ui.js",
+      "require": "./dist/ui.cjs"
     }
   },
   "scripts": {

@@ -1,85 +1,69 @@
 # File structure
 
-This repository is an npm-workspaces monorepo. The demo React app and the publishable component library are separate workspaces with separate package manifests.
+This repository is an npm-workspaces monorepo. The demo React app and the
+publishable framework are separate workspaces.
 
 ```text
 react-desktop-environment/
 ├── apps/
-│   └── demo/                         # Vite React demo; never published
-│       ├── src/
-│       │   ├── App.jsx               # Demo directory and route selection
-│       │   ├── demos/
-│       │   │   ├── window-manager/   # Headless manager-only demo
-│       │   │   └── desktop-environment/ # Desktop implementation demo
-│       │   └── main.jsx              # Demo application entry
-│       ├── index.html
-│       ├── package.json
-│       └── vite.config.js
+│   └── demo/
+│       └── src/
+│           ├── App.jsx
+│           └── demos/
+│               ├── window-manager/
+│               └── compositor/
 ├── packages/
-│   └── react-desktop-environment/    # Published component library
-│       ├── src/
-│       │   ├── window-manager/        # Headless external relationship state
-│       │   │   └── react/             # Stock React providers and hooks
-│       │   ├── desktop-environment/   # Desktop state and manager consumption
-│       │   │   └── ui/                # React desktop components
-│       │   ├── Button.jsx             # Plain HTML button component
-│       │   ├── Button.test.jsx
-│       │   └── index.js               # Public library entry
-│       ├── package.json              # Library name and version
-│       └── vite.config.js            # Library build configuration
+│   └── react-desktop-environment/
+│       └── src/
+│           ├── window-manager/
+│           │   └── react/
+│           ├── compositor/
+│           │   ├── createCompositor.js
+│           │   ├── index.js
+│           │   └── react/
+│           ├── ui/
+│           └── index.js
 ├── docs/
-│   └── file-structure.md
-├── package.json                      # Private workspace root
-└── package-lock.json                 # Shared dependency lockfile
+├── package.json
+└── package-lock.json
 ```
 
 ## Library workspace
 
-`packages/react-desktop-environment` is the only publishable package. It exposes
-the combined package API plus dedicated `window-manager`,
-`window-manager/react`, and `desktop-environment` entry points. `window-manager`
-is a headless external state manager. `window-manager/react` supplies the stock
-React providers, relationship hooks, selectors, and surface-scoped controller.
-`desktop-environment` consumes manager snapshots and owns desktop presentation
-state, while `desktop-environment/ui` renders that desktop using React.
+`packages/react-desktop-environment` is the publishable package. Its dedicated
+entry points make the framework boundaries visible:
 
-The library build treats React as a peer dependency, so applications provide their own React installation. Running the workspace build writes publishable files to `packages/react-desktop-environment/dist`.
+- `window-manager` is the headless surface relationship engine;
+- `window-manager/react` is its stock React consumption interface;
+- `compositor` directs manager relationships, desktop state, applications, and
+  interface connectors into a coherent desktop experience;
+- `ui` is the replaceable stock visual implementation.
 
-### Target source organization
+Each important abstraction states its conceptual responsibility through an
+`ABSTRACTION` export in its `index.js`. Implementation technology may be grouped
+inside an already named abstraction, as with `window-manager/react` and
+`compositor/react`.
 
-The current `desktop-environment` implementation will be separated by software
-responsibility rather than by rendering technology:
+`createCompositor.js` keeps the cohesive non-React compositor mechanism together.
+The `react` folder coordinates application and surface composition. The
+compositor does not import the stock UI; consumers explicitly connect a
+compatible interface.
 
-```text
-src/
-  window-manager/
-    react/              # Official surface context and relationship interface
-
-  compositor/
-    desktop-state/      # Compositor-owned window state and persistence
-    controllers/        # Headless application and window composition
-    connectors/         # Consumer-supplied rendering contracts
-
-  ui/                   # Replaceable default visual implementation
-```
-
-The compositor is the main consumer of `window-manager/react`. It owns desktop
-state and coordinates application and window rendering, while `ui` consumes its
-capability-based contract. This section describes the intended refactor; the
-tree above continues to describe the files currently present.
+React remains a peer dependency. Applications provide their own installation.
+The library build writes publishable entry files to
+`packages/react-desktop-environment/dist`.
 
 ## Demo workspace
 
-`apps/demo` is a private Vite application for developing and manually checking
-the library. It imports `react-desktop-environment` through the npm workspace
-source entry points so development cannot use a stale package build. The base
-route is a directory linking to `/window-manager` and `/desktop-environment`.
-The manager route imports only the headless manager entry point. The desktop
-route supplies application resolution and payload interfaces to the desktop
-environment.
+`apps/demo` is private and never published. Its base route links to isolated
+window-manager and compositor demonstrations. Source aliases point directly to
+the library workspace so development cannot accidentally use an old build.
 
-Demo code must stay inside `apps/demo`. It is not part of the library build and is not included when the component package is published.
+The compositor demo explicitly combines application resolution with the stock
+UI connectors. The window-manager demo remains independent of compositor and
+presentation behavior.
 
 ## Root workspace
 
-The root package is private and coordinates shared commands. `npm run dev` starts the demo, while `npm run build` and `npm test` run the corresponding scripts across the workspaces.
+The private root workspace coordinates shared development, build, and test
+commands.

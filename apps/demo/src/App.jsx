@@ -6,9 +6,9 @@ const WindowManagerDemo = lazy(() =>
   })),
 )
 
-const DesktopEnvironmentDemo = lazy(() =>
-  import('./demos/desktop-environment/DesktopEnvironmentDemo.jsx').then(
-    (module) => ({ default: module.DesktopEnvironmentDemo }),
+const CompositorDemo = lazy(() =>
+  import('./demos/compositor/CompositorDemo.jsx').then(
+    (module) => ({ default: module.CompositorDemo }),
   ),
 )
 
@@ -25,10 +25,10 @@ export default function App() {
     )
   }
 
-  if (path === '/desktop-environment') {
+  if (path === '/compositor') {
     return (
       <Suspense fallback={<DemoLoading />}>
-        <DesktopEnvironmentDemo />
+        <CompositorDemo />
       </Suspense>
     )
   }
@@ -67,12 +67,12 @@ function DemoDirectory({ unknownPath }) {
           <span className="directory-link">Open demo →</span>
         </a>
 
-        <a className="demo-directory-card" href="/desktop-environment">
-          <span className="eyebrow">Manager consumer</span>
-          <strong>Desktop environment</strong>
+        <a className="demo-directory-card" href="/compositor">
+          <span className="eyebrow">Manager director</span>
+          <strong>Compositor</strong>
           <p>
-            See manager surfaces reconciled into independently owned desktop
-            window records and React UI.
+            See manager relationships, desktop state, applications, and a
+            replaceable interface coordinated into one experience.
           </p>
           <span className="directory-link">Open demo →</span>
         </a>

@@ -25,10 +25,19 @@ export default defineConfig({
         ),
       },
       {
-        find: /^react-desktop-environment\/desktop-environment$/,
+        find: /^react-desktop-environment\/compositor$/,
         replacement: fileURLToPath(
           new URL(
-            '../../packages/react-desktop-environment/src/desktop-environment/index.js',
+            '../../packages/react-desktop-environment/src/compositor/index.js',
+            import.meta.url,
+          ),
+        ),
+      },
+      {
+        find: /^react-desktop-environment\/ui$/,
+        replacement: fileURLToPath(
+          new URL(
+            '../../packages/react-desktop-environment/src/ui/index.js',
             import.meta.url,
           ),
         ),

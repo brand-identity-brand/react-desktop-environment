@@ -15,9 +15,8 @@ Prefer:
 window-manager/
   react/
 compositor/
-  desktop-state/
-  controllers/
-  connectors/
+  createCompositor.js
+  react/
 ui/
 ```
 
@@ -47,11 +46,10 @@ subfolders may then exist inside that boundary.
 
 Names and locations should reveal ownership:
 
-- `window-manager` is a headless external state manager;
+- `window-manager` is a headless surface relationship engine;
 - `window-manager/react` is its official React consumption interface;
-- `compositor` consumes that interface, owns desktop state, and coordinates
-  application and window rendering;
-- `compositor/desktop-state` keeps compositor-owned state logic together;
+- `compositor` consumes that interface, owns applications and windows, and
+  coordinates their presentation;
 - `ui` is the replaceable visual implementation of the compositor contract.
 
 The headless window manager must not import React or render UI. Its optional
@@ -69,6 +67,20 @@ top-level `react` folder. Technology names may appear inside an already named
 abstraction when they distinguish an implementation interface, as in
 `window-manager/react`.
 
+## State the Abstraction First
+
+Every important abstraction begins by stating what it means in the framework.
+Its `index.js` exports an `ABSTRACTION` string that describes the high-level
+concept and its responsibility.
+
+The statement must help a developer understand the framework before reading
+its implementation. Describe meaning, ownership, relationships, and purpose.
+Do not describe files, functions, libraries, syntax, or implementation tools.
+
+Implementation details may change without changing the abstraction statement.
+If the statement must change whenever code is reorganized, it is describing the
+machinery rather than the concept.
+
 ## Preserve Record Ownership
 
 Do not mutate, decorate, spread, or reshape objects returned by another
@@ -79,13 +91,13 @@ Prefer:
 
 ```js
 const surface = managerSnapshot.surfaces[surfaceId]
-const window = desktopSnapshot.windows[surfaceId]
+const window = compositorSnapshot.windows[surfaceId]
 ```
 
 Avoid:
 
 ```js
-desktopSnapshot.windows[surfaceId] = {
+compositorSnapshot.windows[surfaceId] = {
   ...managerSnapshot.surfaces[surfaceId],
   zIndex: 10,
 }

@@ -1,8 +1,6 @@
 import {
   WindowManagerCommandType,
-  createCloseApplicationCommand,
   createCloseSurfaceCommand,
-  createLaunchApplicationCommand,
   createMoveSurfaceCommand,
   createOpenSurfaceCommand,
 } from './commands.js'
@@ -11,66 +9,39 @@ import { reduceWindowManager } from './transitions.js'
 
 const resolveCreateId = (createId) => {
   if (createId !== undefined) {
-    if (typeof createId !== 'function') {
-      throw new TypeError('createId must be a function')
-    }
+    if (typeof createId !== 'function') throw new TypeError('createId must be a function')
     return createId
   }
-
   if (typeof globalThis.crypto?.randomUUID !== 'function') {
-    throw new Error(
-      'createWindowManager requires crypto.randomUUID or an explicit createId',
-    )
+    throw new Error('createWindowManager requires crypto.randomUUID or an explicit createId')
   }
-
-  return (kind) => `${kind}:${globalThis.crypto.randomUUID()}`
+  return () => `surface:${globalThis.crypto.randomUUID()}`
 }
 
 export const createWindowManager = (options = {}) => {
   let snapshot = prepareWindowManagerSnapshot(options.initialSnapshot)
-  const snapshotListeners = new Set()
+  const listeners = new Set()
   const eventListeners = new Set()
   const createId = resolveCreateId(options.createId)
 
   const getSnapshot = () => snapshot
-
-  const prepareCommand = (command) => {
-    if (command?.type === WindowManagerCommandType.launchApplication) {
-      return createLaunchApplicationCommand({
-        ...command.input,
-        applicationId: command.input.applicationId ?? createId('application'),
-        surfaceId: command.input.surfaceId ?? createId('surface'),
-      })
-    }
-
-    if (command?.type === WindowManagerCommandType.openSurface) {
-      return createOpenSurfaceCommand({
-        ...command.input,
-        surfaceId: command.input.surfaceId ?? createId('surface'),
-      })
-    }
-
-    return command
-  }
-
   const dispatch = (command) => {
-    const previousSnapshot = snapshot
-    const transition = reduceWindowManager(
-      previousSnapshot,
-      prepareCommand(command),
-    )
+    const preparedCommand =
+      command?.type === WindowManagerCommandType.openSurface
+        ? createOpenSurfaceCommand({
+            ...command.input,
+            surfaceId: command.input.surfaceId ?? createId('surface'),
+          })
+        : command
+    const transition = reduceWindowManager(snapshot, preparedCommand)
     snapshot = transition.snapshot
-    snapshotListeners.forEach((listener) => listener())
+    listeners.forEach((listener) => listener())
     eventListeners.forEach((listener) => listener(transition.event))
     return transition.result
   }
 
   const commands = Object.freeze({
-    launchApplication: (input) =>
-      dispatch(createLaunchApplicationCommand(input)),
-    closeApplication: (applicationId) =>
-      dispatch(createCloseApplicationCommand(applicationId)),
-    openSurface: (input) => dispatch(createOpenSurfaceCommand(input)),
+    openSurface: (input = {}) => dispatch(createOpenSurfaceCommand(input)),
     moveSurface: (surfaceId, parentSurfaceId = null) =>
       dispatch(createMoveSurfaceCommand(surfaceId, parentSurfaceId)),
     closeSurface: (surfaceId) => dispatch(createCloseSurfaceCommand(surfaceId)),
@@ -80,8 +51,8 @@ export const createWindowManager = (options = {}) => {
     getSnapshot,
     dispatch,
     subscribe(listener) {
-      snapshotListeners.add(listener)
-      return () => snapshotListeners.delete(listener)
+      listeners.add(listener)
+      return () => listeners.delete(listener)
     },
     subscribeEvents(listener) {
       eventListeners.add(listener)

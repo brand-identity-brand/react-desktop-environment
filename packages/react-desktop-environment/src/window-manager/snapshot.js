@@ -1,46 +1,25 @@
 export const EMPTY_WINDOW_MANAGER_SNAPSHOT = Object.freeze({
-  applications: Object.freeze({}),
   surfaces: Object.freeze({}),
 })
 
 const freezeRecord = (record) =>
   Object.isFrozen(record) ? record : Object.freeze({ ...record })
 
-const freezeRecordCollection = (records = {}) =>
-  Object.isFrozen(records)
-    ? records
+const freezeSurfaces = (surfaces = {}) =>
+  Object.isFrozen(surfaces)
+    ? surfaces
     : Object.freeze(
         Object.fromEntries(
-          Object.entries(records).map(([id, record]) => [
+          Object.entries(surfaces).map(([id, surface]) => [
             id,
-            freezeRecord(record),
+            freezeRecord(surface),
           ]),
         ),
       )
 
-export const freezeWindowManagerSnapshot = (
-  snapshot = EMPTY_WINDOW_MANAGER_SNAPSHOT,
-) =>
-  Object.freeze({
-    applications: freezeRecordCollection(snapshot.applications),
-    surfaces: freezeRecordCollection(snapshot.surfaces),
-  })
-
-const validateApplication = ([applicationId, application]) => {
-  if (!application.id || application.id !== applicationId) {
-    throw new Error(`Invalid application record: ${application.id ?? 'missing id'}`)
-  }
-  if (!application.typeId) {
-    throw new Error(`Application ${applicationId} has no type`)
-  }
-}
-
 const validateSurface = (snapshot) => ([surfaceId, surface]) => {
   if (!surface.id || surface.id !== surfaceId) {
     throw new Error(`Invalid surface record: ${surface.id ?? 'missing id'}`)
-  }
-  if (!snapshot.applications[surface.applicationId]) {
-    throw new Error(`Surface ${surfaceId} refers to an unknown application`)
   }
   if (surface.parentId !== null && !snapshot.surfaces[surface.parentId]) {
     throw new Error(`Surface ${surfaceId} refers to an unknown parent`)
@@ -60,22 +39,15 @@ const validateSurfaceAncestors = (snapshot, surfaceId) => {
   }
 }
 
-export const validateWindowManagerSnapshot = (snapshot) => {
-  Object.entries(snapshot.applications).forEach(validateApplication)
-  Object.entries(snapshot.surfaces).forEach(validateSurface(snapshot))
-  Object.keys(snapshot.surfaces).forEach((surfaceId) =>
-    validateSurfaceAncestors(snapshot, surfaceId),
+export const prepareWindowManagerSnapshot = (
+  snapshot = EMPTY_WINDOW_MANAGER_SNAPSHOT,
+) => {
+  const prepared = Object.freeze({ surfaces: freezeSurfaces(snapshot.surfaces) })
+  Object.entries(prepared.surfaces).forEach(validateSurface(prepared))
+  Object.keys(prepared.surfaces).forEach((surfaceId) =>
+    validateSurfaceAncestors(prepared, surfaceId),
   )
-  return snapshot
-}
-
-export const prepareWindowManagerSnapshot = (snapshot) =>
-  validateWindowManagerSnapshot(freezeWindowManagerSnapshot(snapshot))
-
-export const requireApplication = (snapshot, applicationId) => {
-  const application = snapshot.applications[applicationId]
-  if (!application) throw new Error(`Unknown application: ${applicationId}`)
-  return application
+  return prepared
 }
 
 export const requireSurface = (snapshot, surfaceId) => {
@@ -107,38 +79,3 @@ export const collectSurfaceTree = (snapshot, rootId) => {
 
   return [...collectedIds]
 }
-
-export const addApplication = (snapshot, application) => ({
-  ...snapshot,
-  applications: {
-    ...snapshot.applications,
-    [application.id]: application,
-  },
-})
-
-export const addSurface = (snapshot, surface) => ({
-  ...snapshot,
-  surfaces: {
-    ...snapshot.surfaces,
-    [surface.id]: surface,
-  },
-})
-
-export const replaceSurface = addSurface
-
-const removeRecordIds = (records, removedIds) => {
-  const removedIdSet = new Set(removedIds)
-  return Object.fromEntries(
-    Object.entries(records).filter(([id]) => !removedIdSet.has(id)),
-  )
-}
-
-export const removeApplications = (snapshot, applicationIds) => ({
-  ...snapshot,
-  applications: removeRecordIds(snapshot.applications, applicationIds),
-})
-
-export const removeSurfaces = (snapshot, surfaceIds) => ({
-  ...snapshot,
-  surfaces: removeRecordIds(snapshot.surfaces, surfaceIds),
-})
