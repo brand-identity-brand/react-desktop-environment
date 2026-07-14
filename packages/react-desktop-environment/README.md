@@ -59,6 +59,58 @@ owns application identity, surface identity, lifecycle, and parent-child surface
 relationships. It exposes snapshots, selectors, commands, and callback
 subscriptions.
 
+### Stock React wrappers
+
+The package includes an official React interface as a separate entry point. The
+headless entry remains React-free.
+
+```jsx
+import { createWindowManager } from 'react-desktop-environment/window-manager'
+import {
+  SurfaceProvider,
+  WindowManagerProvider,
+  useSurfaceController,
+} from 'react-desktop-environment/window-manager/react'
+
+const windowManager = createWindowManager()
+
+function SurfaceContent() {
+  const {
+    surface,
+    application,
+    childSurfaces,
+    launchChildApplication,
+  } = useSurfaceController()
+
+  return (
+    <section>
+      <h1>{application.payload?.title ?? application.typeId}</h1>
+      <button
+        onClick={() => launchChildApplication({ typeId: 'notes' })}
+      >
+        Launch child
+      </button>
+      <span>{childSurfaces.length} child surfaces</span>
+    </section>
+  )
+}
+
+function ManagedSurface({ surfaceId }) {
+  return (
+    <WindowManagerProvider manager={windowManager}>
+      <SurfaceProvider surfaceId={surfaceId}>
+        <SurfaceContent />
+      </SurfaceProvider>
+    </WindowManagerProvider>
+  )
+}
+```
+
+The wrapper entry exposes manager and surface providers, snapshot and selector
+hooks, current surface/application hooks, parent/root/child relationship hooks,
+and a surface-scoped controller. It returns manager records and commands only;
+rendering and desktop behavior remain consumer responsibilities.
+
 The desktop environment consumes those snapshots in one direction and owns
 workspace, visibility, ordering, geometry, and other desktop concerns. A
 consumer supplies the callback that resolves application records into UI.

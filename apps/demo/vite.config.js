@@ -7,6 +7,15 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: /^react-desktop-environment\/window-manager\/react$/,
+        replacement: fileURLToPath(
+          new URL(
+            '../../packages/react-desktop-environment/src/window-manager/react/index.js',
+            import.meta.url,
+          ),
+        ),
+      },
+      {
         find: /^react-desktop-environment\/window-manager$/,
         replacement: fileURLToPath(
           new URL(

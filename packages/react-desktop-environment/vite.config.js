@@ -13,6 +13,9 @@ export default defineConfig({
         'window-manager': fileURLToPath(
           new URL('./src/window-manager/index.js', import.meta.url),
         ),
+        'window-manager-react': fileURLToPath(
+          new URL('./src/window-manager/react/index.js', import.meta.url),
+        ),
         'desktop-environment': fileURLToPath(
           new URL('./src/desktop-environment/index.js', import.meta.url),
         ),

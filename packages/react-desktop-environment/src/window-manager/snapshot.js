@@ -3,14 +3,20 @@ export const EMPTY_WINDOW_MANAGER_SNAPSHOT = Object.freeze({
   surfaces: Object.freeze({}),
 })
 
-const freezeRecord = (record) => Object.freeze({ ...record })
+const freezeRecord = (record) =>
+  Object.isFrozen(record) ? record : Object.freeze({ ...record })
 
 const freezeRecordCollection = (records = {}) =>
-  Object.freeze(
-    Object.fromEntries(
-      Object.entries(records).map(([id, record]) => [id, freezeRecord(record)]),
-    ),
-  )
+  Object.isFrozen(records)
+    ? records
+    : Object.freeze(
+        Object.fromEntries(
+          Object.entries(records).map(([id, record]) => [
+            id,
+            freezeRecord(record),
+          ]),
+        ),
+      )
 
 export const freezeWindowManagerSnapshot = (
   snapshot = EMPTY_WINDOW_MANAGER_SNAPSHOT,

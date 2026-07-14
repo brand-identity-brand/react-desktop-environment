@@ -19,6 +19,10 @@
       "import": "./dist/window-manager.js",
       "require": "./dist/window-manager.cjs"
     },
+    "./window-manager/react": {
+      "import": "./dist/window-manager-react.js",
+      "require": "./dist/window-manager-react.cjs"
+    },
     "./desktop-environment": {
       "import": "./dist/desktop-environment.js",
       "require": "./dist/desktop-environment.cjs"

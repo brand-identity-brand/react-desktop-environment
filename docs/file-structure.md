@@ -19,6 +19,7 @@ react-desktop-environment/
 │   └── react-desktop-environment/    # Published component library
 │       ├── src/
 │       │   ├── window-manager/        # Headless external relationship state
+│       │   │   └── react/             # Stock React providers and hooks
 │       │   ├── desktop-environment/   # Desktop state and manager consumption
 │       │   │   └── ui/                # React desktop components
 │       │   ├── Button.jsx             # Plain HTML button component
@@ -35,11 +36,12 @@ react-desktop-environment/
 ## Library workspace
 
 `packages/react-desktop-environment` is the only publishable package. It exposes
-the combined package API plus dedicated `window-manager` and
-`desktop-environment` entry points. `window-manager` is a headless external state
-manager. `desktop-environment` consumes its snapshots and owns desktop
-presentation state, while `desktop-environment/ui` renders that desktop using
-React.
+the combined package API plus dedicated `window-manager`,
+`window-manager/react`, and `desktop-environment` entry points. `window-manager`
+is a headless external state manager. `window-manager/react` supplies the stock
+React providers, relationship hooks, selectors, and surface-scoped controller.
+`desktop-environment` consumes manager snapshots and owns desktop presentation
+state, while `desktop-environment/ui` renders that desktop using React.
 
 The library build treats React as a peer dependency, so applications provide their own React installation. Running the workspace build writes publishable files to `packages/react-desktop-environment/dist`.
 
