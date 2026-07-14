@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createWindowManager } from '../window-manager/createWindowManager.js'
-import { createCompositor } from './createCompositor.js'
+import createWindowManager from '../window-manager/createWindowManager.js'
+import createCompositor from './createCompositor.js'
 
 const createSystems = () => {
   let sequence = 0

@@ -66,5 +66,5 @@ compositor.surface.remove()
 compositor.cleanup()
 `
 
-export { createCompositor } from './createCompositor.js'
-export { SurfaceComposer } from './react/SurfaceComposer.jsx'
+export { default as createCompositor } from './createCompositor.js'
+export { default as SurfaceComposer } from './react/SurfaceComposer.jsx'

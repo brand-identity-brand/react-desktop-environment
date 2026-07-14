@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import { WindowManagerContext } from './contexts.js'
+import { WindowManagerContext } from './WindowManagerContexts.js'
 
 const requireManager = (manager) => {
   if (
@@ -14,7 +14,7 @@ const requireManager = (manager) => {
   return manager
 }
 
-export function WindowManagerProvider({ manager, children }) {
+export default function WindowManagerProvider({ manager, children }) {
   return createElement(
     WindowManagerContext.Provider,
     { value: requireManager(manager) },

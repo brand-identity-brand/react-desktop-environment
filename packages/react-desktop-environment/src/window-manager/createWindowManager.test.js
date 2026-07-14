@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createWindowManager } from './createWindowManager.js'
+import createWindowManager from './createWindowManager.js'
 
 const createTestManager = () => {
   let sequence = 0

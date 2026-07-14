@@ -1,5 +1,5 @@
 import { useCallback, useContext, useMemo, useSyncExternalStore } from 'react'
-import { WindowIdContext, WindowManagerContext } from './contexts.js'
+import { WindowIdContext, WindowManagerContext } from './WindowManagerContexts.js'
 
 const sameRecords = (previous, next) =>
   previous.length === next.length &&

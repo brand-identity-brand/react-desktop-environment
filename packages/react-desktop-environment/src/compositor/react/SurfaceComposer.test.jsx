@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react'
 import { act, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { createWindowManager } from '../../window-manager/createWindowManager.js'
-import { createCompositor } from '../createCompositor.js'
-import { SurfaceComposer } from './SurfaceComposer.jsx'
+import createWindowManager from '../../window-manager/createWindowManager.js'
+import createCompositor from '../createCompositor.js'
+import SurfaceComposer from './SurfaceComposer.jsx'
 
 describe('SurfaceComposer', () => {
   it('reactively composes child surfaces without context', () => {

@@ -1,1 +1,1 @@
-export { SurfaceComposer } from './SurfaceComposer.jsx'
+export { default as SurfaceComposer } from './SurfaceComposer.jsx'

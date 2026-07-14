@@ -1,10 +1,14 @@
 import React from 'react'
 import { act, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { createWindowManager } from '../createWindowManager.js'
-import { WindowManagerProvider } from './WindowManagerProvider.jsx'
-import { WindowProvider } from './WindowProvider.jsx'
-import { useRootWindows, useWindow, useWindowController } from './hooks.js'
+import createWindowManager from '../createWindowManager.js'
+import WindowManagerProvider from './WindowManagerProvider.jsx'
+import WindowProvider from './WindowProvider.jsx'
+import {
+  useRootWindows,
+  useWindow,
+  useWindowController,
+} from './WindowManagerHooks.js'
 
 const createTestManager = () => {
   let sequence = 0

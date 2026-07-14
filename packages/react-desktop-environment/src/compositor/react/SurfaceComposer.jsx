@@ -1,4 +1,4 @@
-import { createElement, Fragment, memo, useCallback, useSyncExternalStore } from 'react'
+import React, { memo, useCallback, useSyncExternalStore } from 'react'
 
 const requireCompositor = (compositor) => {
   if (
@@ -11,7 +11,16 @@ const requireCompositor = (compositor) => {
   return compositor
 }
 
-export const SurfaceComposer = memo(function SurfaceComposerImplementation({
+// A key preserves component identity, memo skips rendering when props are
+// unchanged, and an external-store subscription rerenders when the selected
+// state for that surface changes.
+//
+// Keep the recursive composition as one simple architectural idea. If profiling
+// shows that adding a sibling makes existing SurfaceComponent or
+// ApplicationComponent renders expensive, each mapped surface can gain its own
+// memoized rendering boundary. That is an infrastructure optimization, not a
+// requirement of the surface architecture.
+const SurfaceComposer = memo(function SurfaceComposerComponent({
   compositor: suppliedCompositor,
   surfaceId,
   children,
@@ -27,40 +36,46 @@ export const SurfaceComposer = memo(function SurfaceComposerImplementation({
     readChildren,
   )
 
-  return createElement(
-    Fragment,
-    null,
-    children,
-    childSurfaces.map((surface) => {
-      const SurfaceComponent = compositor.surface.getComponent({
-        surfaceId: surface.surfaceId,
-      })
-      const ApplicationComponent = compositor.application.getComponent({
-        applicationId: surface.applicationId,
-      })
+  return (
+    <>
+      {children}
 
-      return createElement(
-        SurfaceComponent,
-        {
-          ...surface.props,
-          key: surface.surfaceId,
-          surface,
-          window: surface.window,
-          application: surface.application,
-          hidden: surface.hidden,
-        },
-        createElement(ApplicationComponent, {
-          ...surface.application.props,
-          key: surface.applicationId,
-          surface,
-          window: surface.window,
-          application: surface.application,
-        }),
-        createElement(SurfaceComposer, {
-          compositor,
+      {childSurfaces.map((surface) => {
+        const SurfaceComponent = compositor.surface.getComponent({
           surfaceId: surface.surfaceId,
-        }),
-      )
-    }),
+        })
+        const ApplicationComponent = compositor.application.getComponent({
+          applicationId: surface.applicationId,
+        })
+
+        return (
+          <SurfaceComponent
+            {...surface.props}
+            key={surface.surfaceId}
+            surface={surface}
+            window={surface.window}
+            application={surface.application}
+            hidden={surface.hidden}
+          >
+            <ApplicationComponent
+              {...surface.application.props}
+              key={surface.applicationId}
+              surface={surface}
+              window={surface.window}
+              application={surface.application}
+            />
+
+            <SurfaceComposer
+              compositor={compositor}
+              surfaceId={surface.surfaceId}
+            />
+          </SurfaceComponent>
+        )
+      })}
+    </>
   )
 })
+
+SurfaceComposer.displayName = 'SurfaceComposer'
+
+export default SurfaceComposer

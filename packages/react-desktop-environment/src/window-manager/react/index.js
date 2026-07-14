@@ -1,5 +1,5 @@
-export { WindowManagerProvider } from './WindowManagerProvider.jsx'
-export { WindowProvider } from './WindowProvider.jsx'
+export { default as WindowManagerProvider } from './WindowManagerProvider.jsx'
+export { default as WindowProvider } from './WindowProvider.jsx'
 export {
   useChildWindows,
   useCurrentWindow,
@@ -11,4 +11,4 @@ export {
   useWindowManager,
   useWindowManagerSelector,
   useWindowManagerSnapshot,
-} from './hooks.js'
+} from './WindowManagerHooks.js'

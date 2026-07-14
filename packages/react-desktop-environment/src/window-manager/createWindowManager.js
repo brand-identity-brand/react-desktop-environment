@@ -55,7 +55,7 @@ const sameRecords = (previous, next) =>
   previous.length === next.length &&
   previous.every((record, index) => record === next[index])
 
-export const createWindowManager = (options = {}) => {
+export default function createWindowManager(options = {}) {
   const createId = resolveCreateId(options.createId)
   let snapshot = prepareSnapshot(options.initialSnapshot)
   const listeners = new Set()

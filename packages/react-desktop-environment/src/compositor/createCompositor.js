@@ -19,7 +19,7 @@ const sameRecords = (previous, next) =>
   previous.length === next.length &&
   previous.every((record, index) => record === next[index])
 
-export const createCompositor = (options = {}) => {
+export default function createCompositor(options = {}) {
   const { windowManager } = options
   if (!windowManager?.window || typeof windowManager.subscribe !== 'function') {
     throw new TypeError('createCompositor requires a window manager')
