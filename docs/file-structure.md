@@ -43,6 +43,29 @@ React.
 
 The library build treats React as a peer dependency, so applications provide their own React installation. Running the workspace build writes publishable files to `packages/react-desktop-environment/dist`.
 
+### Target source organization
+
+The current `desktop-environment` implementation will be separated by software
+responsibility rather than by rendering technology:
+
+```text
+src/
+  window-manager/
+    react/              # Official surface context and relationship interface
+
+  compositor/
+    desktop-state/      # Compositor-owned window state and persistence
+    controllers/        # Headless application and window composition
+    connectors/         # Consumer-supplied rendering contracts
+
+  ui/                   # Replaceable default visual implementation
+```
+
+The compositor is the main consumer of `window-manager/react`. It owns desktop
+state and coordinates application and window rendering, while `ui` consumes its
+capability-based contract. This section describes the intended refactor; the
+tree above continues to describe the files currently present.
+
 ## Demo workspace
 
 `apps/demo` is a private Vite application for developing and manually checking

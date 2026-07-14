@@ -51,22 +51,58 @@ The window manager is a headless external state manager. It owns:
 - serializable runtime snapshots and lifecycle events;
 - read, command, query, and callback subscription interfaces for consumers.
 
-It does not import React, render components, or provide `ApplicationRenderer` or
-`SurfaceOutlet` components. It also does not own workspaces, position, size,
-stacking, focus, visibility, minimizing, dragging, resizing, or adapter-specific
-data.
+The headless manager does not import React or render components. It also does
+not own workspaces, position, size, stacking, focus, visibility, minimizing,
+dragging, resizing, or adapter-specific data.
 
-### Desktop environment
+### Window-manager React interface
 
-The desktop environment is a consumer of the window manager. It subscribes to
-window-manager state, resolves application records using consumer-supplied
-interfaces, and projects surfaces as desktop windows. Any React context,
-component resolution, child rendering mechanism, or outlet-like UI belongs to
-this implementation rather than the window manager.
+`window-manager/react` is the official React interface to the headless manager.
+It provides manager context, current-surface context, relationship hooks, and
+surface controllers. It may expose generic child-surface rendering callbacks,
+but it does not describe a child as a window or own desktop state.
 
-The desktop environment owns window records, workspaces, geometry, stacking,
-focus, visibility, dragging, and resizing. Its state is keyed by stable surface
-IDs from the window manager.
+This interface raises the normal consumer API above manual external-store
+subscriptions while preserving the dependency direction:
+
+```text
+window-manager/react -> window-manager
+```
+
+### Compositor
+
+The compositor is the primary consumer of `window-manager/react`. It is a
+headless React composition system that gives manager relationships desktop
+meaning. It owns desktop window state, reconciliation, workspaces, geometry,
+stacking, focus, visibility, persistence, hydration, and z-index normalization.
+
+Desktop state remains grouped inside the compositor so state transitions and
+persistence do not scatter through rendering code:
+
+```text
+compositor/
+  desktop-state/
+  controllers/
+  connectors/
+```
+
+The compositor coordinates application and window rendering through
+consumer-supplied connectors. It carries the current surface context, joins
+manager records with compositor-owned window records, and exposes controllers
+such as child-window and hidden-window rendering. It does not define visual
+markup or import the default UI.
+
+### UI
+
+`ui` is the replaceable visual implementation. It consumes compositor
+controllers and render functions to provide desktops, window frames, title
+bars, taskbars, and other controls. Consumers may replace one component or the
+entire UI while keeping compositor behavior.
+
+The UI contract is capability-based. Missing optional capabilities reduce
+available features without corrupting state or breaking unrelated rendering.
+For example, omitting a hidden-window component removes taskbar restoration UI,
+and omitting resize controls removes resizing from that UI.
 
 ### Record ownership and joins
 
@@ -81,7 +117,7 @@ windowManagerSnapshot.surfaces[surfaceId] = {
   parentId,
 }
 
-desktopSnapshot.windows[surfaceId] = {
+compositorSnapshot.windows[surfaceId] = {
   workspaceId,
   position,
   size,
@@ -90,8 +126,9 @@ desktopSnapshot.windows[surfaceId] = {
 }
 ```
 
-The shared `surfaceId` key is the relationship. The desktop record does not
-copy the surface, repeat its ID as a field, or add desktop properties to it.
+The shared `surfaceId` key is the relationship. The compositor-owned window
+record does not copy the surface, repeat its ID as a field, or add desktop
+properties to it.
 
 ### Other consumers
 
@@ -102,11 +139,11 @@ presentation state, rendering technology, and interaction model.
 Presentation synchronization is one-way:
 
 ```text
-Window-manager snapshot -> presentation facilitator -> rendered presentation
+Window-manager snapshot -> compositor -> UI
 ```
 
-The presentation reconciles its records with the current runtime snapshot. If a
-surface no longer exists in the runtime, its presentation record can be safely
+The compositor reconciles its records with the current manager snapshot. If a
+surface no longer exists in the manager, its window record can be safely
 removed.
 
 ### Applications
@@ -154,11 +191,11 @@ windows = {
 
 ## Persistence and Initialization
 
-The desktop environment persists its own records separately from the window
-manager. During initialization it removes entries without current surfaces,
-adds defaults for new surfaces, and normalizes saved z-index values while
-preserving their relative order. Normalization happens before rendering, not on
-every focus update.
+The compositor persists its desktop records separately from the window manager.
+During initialization it removes entries without current surfaces, adds
+defaults for new surfaces, and normalizes saved z-index values while preserving
+their relative order. Normalization happens before rendering, not on every
+focus update.
 
 ## Snapshot Identity
 
@@ -173,15 +210,15 @@ the architecture's immutability mechanism.
 
 ## Consumer Rendering and State
 
-A consumer may accept a registry or resolver callback that maps an application's
-`typeId` to something it can render. This resolution contract belongs to the
-consumer; there is no standard `ApplicationRenderer` in the window manager.
+A consumer supplies the compositor with a registry, resolver, or application
+rendering callback that maps an application's `typeId` to something renderable.
+The compositor coordinates resolution and surface context without owning the
+application component or its state.
 
-When the desktop environment uses React, a rerender does not clear
-component-local state. State is cleared only when a component is unmounted or
-remounted, such as when its key or component type changes. The desktop
-environment must therefore preserve stable IDs, keys, and resolved component
-identities.
+A React rerender does not clear component-local state. State is cleared only
+when a component is unmounted or remounted, such as when its key or component
+type changes. The compositor must therefore preserve stable IDs, keys, and
+resolved component identities.
 
 View-local state may end with a surface. Durable or shared application state
 must outlive the surface and remain application-owned.
@@ -193,3 +230,10 @@ it does not belong in the window manager.
 
 The window manager exposes state and relationships. Consumers decide how to
 render them.
+
+```text
+window-manager
+      -> window-manager/react
+      -> compositor (owns desktop state)
+      -> replaceable UI
+```

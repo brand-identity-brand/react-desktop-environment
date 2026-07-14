@@ -13,8 +13,12 @@ Prefer:
 
 ```text
 window-manager/
-desktop-environment/
-desktop-environment/ui/
+  react/
+compositor/
+  desktop-state/
+  controllers/
+  connectors/
+ui/
 ```
 
 Avoid technology-first top-level organization such as:
@@ -44,17 +48,26 @@ subfolders may then exist inside that boundary.
 Names and locations should reveal ownership:
 
 - `window-manager` is a headless external state manager;
-- `desktop-environment` consumes window-manager state and implements desktop
-  behavior;
-- `desktop-environment/ui` contains the desktop's visual components.
+- `window-manager/react` is its official React consumption interface;
+- `compositor` consumes that interface, owns desktop state, and coordinates
+  application and window rendering;
+- `compositor/desktop-state` keeps compositor-owned state logic together;
+- `ui` is the replaceable visual implementation of the compositor contract.
 
-The window manager must not import React or render UI. React components,
-component resolution, and outlet-like rendering mechanisms belong to the
-consumer that uses them.
+The headless window manager must not import React or render UI. Its optional
+React interface depends on the headless manager, never the reverse. The
+compositor must not import the default UI; consumers wire compatible UI into
+the compositor.
 
 Do not introduce a shared abstraction merely because two implementations use
 the same technology. Extract one only when the software architecture identifies
 a stable shared responsibility.
+
+Responsibility-based names communicate intent better than technology-based
+names. Use `compositor` for composition responsibilities rather than a generic
+top-level `react` folder. Technology names may appear inside an already named
+abstraction when they distinguish an implementation interface, as in
+`window-manager/react`.
 
 ## Preserve Record Ownership
 
