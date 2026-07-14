@@ -7,7 +7,10 @@ react-desktop-environment/
 ├── apps/
 │   └── demo/                         # Vite React demo; never published
 │       ├── src/
-│       │   ├── App.jsx               # Manager showcase and demo presentation
+│       │   ├── App.jsx               # Demo directory and route selection
+│       │   ├── demos/
+│       │   │   ├── window-manager/   # Headless manager-only demo
+│       │   │   └── desktop-environment/ # Desktop implementation demo
 │       │   └── main.jsx              # Demo application entry
 │       ├── index.html
 │       ├── package.json
@@ -31,11 +34,12 @@ react-desktop-environment/
 
 ## Library workspace
 
-`packages/react-desktop-environment` is the only publishable package. Its
-`src/index.js` file defines the complete public API. `window-manager` is a
-headless external state manager. `desktop-environment` consumes its snapshots
-and owns desktop presentation state, while `desktop-environment/ui` renders that
-desktop using React.
+`packages/react-desktop-environment` is the only publishable package. It exposes
+the combined package API plus dedicated `window-manager` and
+`desktop-environment` entry points. `window-manager` is a headless external state
+manager. `desktop-environment` consumes its snapshots and owns desktop
+presentation state, while `desktop-environment/ui` renders that desktop using
+React.
 
 The library build treats React as a peer dependency, so applications provide their own React installation. Running the workspace build writes publishable files to `packages/react-desktop-environment/dist`.
 
@@ -43,8 +47,11 @@ The library build treats React as a peer dependency, so applications provide the
 
 `apps/demo` is a private Vite application for developing and manually checking
 the library. It imports `react-desktop-environment` through the npm workspace
-link, in the same style as an external consumer. It supplies application
-resolution and payload interfaces to the desktop environment.
+source entry points so development cannot use a stale package build. The base
+route is a directory linking to `/window-manager` and `/desktop-environment`.
+The manager route imports only the headless manager entry point. The desktop
+route supplies application resolution and payload interfaces to the desktop
+environment.
 
 Demo code must stay inside `apps/demo`. It is not part of the library build and is not included when the component package is published.
 

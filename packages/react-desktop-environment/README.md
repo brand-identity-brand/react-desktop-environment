@@ -12,11 +12,13 @@ npm install react-desktop-environment
 
 ```jsx
 import {
+  createWindowManager,
+} from 'react-desktop-environment/window-manager'
+import {
   Desktop,
   DesktopEnvironment,
   createDesktopEnvironment,
-  createWindowManager,
-} from 'react-desktop-environment'
+} from 'react-desktop-environment/desktop-environment'
 
 const applicationTypes = {
   notes: NotesApplication,
@@ -71,7 +73,7 @@ Commands can also be created as values and dispatched:
 import {
   createLaunchApplicationCommand,
   createWindowManager,
-} from 'react-desktop-environment'
+} from 'react-desktop-environment/window-manager'
 
 const windowManager = createWindowManager()
 const launchNotes = createLaunchApplicationCommand({

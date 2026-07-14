@@ -14,6 +14,14 @@
     ".": {
       "import": "./dist/react-desktop-environment.js",
       "require": "./dist/react-desktop-environment.cjs"
+    },
+    "./window-manager": {
+      "import": "./dist/window-manager.js",
+      "require": "./dist/window-manager.cjs"
+    },
+    "./desktop-environment": {
+      "import": "./dist/desktop-environment.js",
+      "require": "./dist/desktop-environment.cjs"
     }
   },
   "scripts": {

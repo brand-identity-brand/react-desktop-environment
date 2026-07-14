@@ -31,6 +31,10 @@ button:hover {
   background: #f5f8f3;
 }
 
+a {
+  color: inherit;
+}
+
 .demo-layout {
   width: min(1440px, 100%);
   margin: 0 auto;
@@ -51,6 +55,18 @@ button:hover {
 .demo-header {
   align-items: flex-end;
   margin-bottom: 2rem;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 2rem;
+  color: #536c55;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
 }
 
 h1,
@@ -106,6 +122,7 @@ h2 {
 }
 
 .desktop-panel,
+.relationship-panel,
 .inspector-panel {
   overflow: hidden;
   border: 1px solid #cbd3c8;
@@ -122,6 +139,112 @@ h2 {
 .panel-heading span {
   color: #607060;
   font-size: 0.85rem;
+}
+
+.directory-layout {
+  max-width: 1100px;
+}
+
+.directory-header {
+  margin-bottom: 2.5rem;
+}
+
+.demo-directory {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.demo-directory-card {
+  display: flex;
+  min-height: 280px;
+  flex-direction: column;
+  padding: 1.5rem;
+  border: 1px solid #cbd3c8;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 20px 60px rgba(44, 61, 46, 0.08);
+  text-decoration: none;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.demo-directory-card:hover {
+  border-color: #536c55;
+  transform: translateY(-2px);
+}
+
+.demo-directory-card strong {
+  margin-bottom: 0.75rem;
+  font-size: 1.6rem;
+}
+
+.demo-directory-card p {
+  color: #576158;
+  line-height: 1.55;
+}
+
+.directory-link {
+  margin-top: auto;
+  color: #24512f;
+  font-weight: 750;
+}
+
+.route-notice {
+  padding: 0.8rem 1rem;
+  border: 1px solid #c8a582;
+  border-radius: 0.6rem;
+  background: #fff8ee;
+}
+
+.surface-tree {
+  display: grid;
+  gap: 0.75rem;
+  min-height: 540px;
+  padding: 1rem;
+  background: #dce5d8;
+}
+
+.surface-branch {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.surface-record {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem;
+  border: 1px solid #aeb8ad;
+  border-radius: 0.7rem;
+  background: #fff;
+}
+
+.surface-record code,
+.surface-record small {
+  display: block;
+  margin-top: 0.2rem;
+  color: #718072;
+}
+
+.record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.record-actions button {
+  padding: 0.4rem 0.55rem;
+  font-size: 0.76rem;
+}
+
+.surface-children {
+  display: grid;
+  gap: 0.75rem;
+  margin-left: 1.5rem;
+  padding-left: 1rem;
+  border-left: 2px solid #9daf9a;
 }
 
 .desktop-canvas {
@@ -289,5 +412,18 @@ h2 {
 
   .manager-grid {
     grid-template-columns: 1fr;
+  }
+
+  .demo-directory {
+    grid-template-columns: 1fr;
+  }
+
+  .surface-record {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .record-actions {
+    justify-content: flex-start;
   }
 }

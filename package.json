@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run build --workspace react-desktop-environment && npm run dev --workspace @react-desktop-environment/demo",
+    "dev": "npm run dev --workspace @react-desktop-environment/demo",
     "build": "npm run build --workspace react-desktop-environment && npm run build --workspace @react-desktop-environment/demo",
     "test": "npm run test --workspace react-desktop-environment"
   },

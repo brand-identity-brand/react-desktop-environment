@@ -17,3 +17,6 @@ npm test
 ```
 
 See [`docs/file-structure.md`](docs/file-structure.md) for the workspace layout and separation of responsibilities.
+
+The demo base route is a directory with isolated pages for the headless window
+manager and the desktop-environment implementation.
