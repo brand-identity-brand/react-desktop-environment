@@ -82,3 +82,13 @@ Returned snapshots are read-only by contract. State commands should replace
 only changed records and preserve references to unchanged records. Do not use
 full-record cloning or refreezing as a substitute for clear ownership and
 structural sharing.
+
+## Fail at Architectural Boundaries
+
+Do not silently fall back when a requirement protects identity, relationships,
+ownership, persistence, or another architectural invariant. A missing required
+capability must fail immediately with a specific error.
+
+Fallbacks are appropriate only when their behavior is intentionally equivalent.
+They must not hide a broken environment or substitute weaker behavior near the
+core of the system.

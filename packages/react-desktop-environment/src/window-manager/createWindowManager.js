@@ -9,21 +9,28 @@ import {
 import { prepareWindowManagerSnapshot } from './snapshot.js'
 import { reduceWindowManager } from './transitions.js'
 
-let fallbackSequence = 0
+const resolveCreateId = (createId) => {
+  if (createId !== undefined) {
+    if (typeof createId !== 'function') {
+      throw new TypeError('createId must be a function')
+    }
+    return createId
+  }
 
-const defaultCreateId = (kind) => {
-  const randomId = globalThis.crypto?.randomUUID?.()
-  if (randomId) return `${kind}:${randomId}`
+  if (typeof globalThis.crypto?.randomUUID !== 'function') {
+    throw new Error(
+      'createWindowManager requires crypto.randomUUID or an explicit createId',
+    )
+  }
 
-  fallbackSequence += 1
-  return `${kind}:${fallbackSequence}`
+  return (kind) => `${kind}:${globalThis.crypto.randomUUID()}`
 }
 
 export const createWindowManager = (options = {}) => {
   let snapshot = prepareWindowManagerSnapshot(options.initialSnapshot)
   const snapshotListeners = new Set()
   const eventListeners = new Set()
-  const createId = options.createId ?? defaultCreateId
+  const createId = resolveCreateId(options.createId)
 
   const getSnapshot = () => snapshot
 

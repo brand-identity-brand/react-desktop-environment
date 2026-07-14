@@ -14,6 +14,18 @@ const launchExample = (manager, overrides = {}) =>
   manager.commands.launchApplication({ typeId: 'example', ...overrides })
 
 describe('createWindowManager', () => {
+  it('fails immediately when no valid identity generator exists', () => {
+    vi.stubGlobal('crypto', undefined)
+
+    try {
+      expect(() => createWindowManager()).toThrow(
+        /requires crypto\.randomUUID or an explicit createId/,
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('dispatches named command values', () => {
     const manager = createTestManager()
     const result = manager.dispatch(
