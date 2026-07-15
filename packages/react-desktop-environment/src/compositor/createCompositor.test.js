@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import createWindowManager from '../window-manager/createWindowManager.js'
 import createCompositor from './createCompositor.js'
 
-const createSystems = () => {
+const createSystems = (options = {}) => {
   let sequence = 0
   const createId = (kind) => `${kind}:${++sequence}`
   const windowManager = createWindowManager({ createId })
@@ -12,6 +12,7 @@ const createSystems = () => {
     applicationRegistry: { Example: () => null },
     surfaceComponentRegistry: { DefaultSurface: ({ children }) => children },
     defaultSurfaceComponentName: 'DefaultSurface',
+    ...options,
   })
   return { windowManager, compositor }
 }
@@ -116,6 +117,63 @@ describe('createCompositor', () => {
     expect(compositor.surface.read({ surfaceId: secondSurface.surfaceId })).toBe(
       secondSurface,
     )
+
+    expect(compositor.surface.raise({ surfaceId: firstSurface.surfaceId })).toMatchObject({
+      hidden: true,
+      zIndex: 3,
+    })
+    compositor.surface.remove({ surfaceId: firstSurface.surfaceId })
+    expect(compositor.surface.read({ surfaceId: firstSurface.surfaceId })).toBeUndefined()
+    expect(compositor.application.read({
+      applicationId: firstApplication.applicationId,
+    })).toBe(firstApplication)
+    expect(compositor.surface.read({ surfaceId: secondSurface.surfaceId })).toBe(
+      secondSurface,
+    )
+  })
+
+  it('supplies stable surface controls with configurable policy', () => {
+    const configured = []
+    const { windowManager, compositor } = createSystems({
+      configureSurfaceControls({ controls, surfaceId }) {
+        configured.push({ controls, surfaceId })
+        return {
+          inspect: () => surfaceId,
+        }
+      },
+    })
+    const window = addWindow(windowManager)
+    const application = addApplication(compositor)
+    const surface = addSurface(compositor, {
+      windowId: window.windowId,
+      applicationId: application.applicationId,
+    })
+    const controls = compositor.surface.readControls({
+      surfaceId: surface.surfaceId,
+    })
+
+    expect(
+      compositor.surface.readControls({ surfaceId: surface.surfaceId }),
+    ).toBe(controls)
+    expect(configured).toHaveLength(1)
+    expect(controls.inspect()).toBe(surface.surfaceId)
+    expect(controls.hide()).toMatchObject({ hidden: true })
+    expect(controls.show()).toMatchObject({ hidden: false, zIndex: 2 })
+    expect(controls.move({ position: { x: 20, y: 30 } })).toMatchObject({
+      position: { x: 20, y: 30 },
+    })
+    expect(controls.focus()).toMatchObject({ zIndex: 3 })
+
+    expect(controls.close()).toEqual({
+      surfaceId: surface.surfaceId,
+      removedWindowIds: [window.windowId],
+      removedSurfaceIds: [],
+      removedApplicationIds: [application.applicationId],
+    })
+    expect(compositor.surface.read({ surfaceId: surface.surfaceId })).toBeUndefined()
+    expect(
+      compositor.application.read({ applicationId: application.applicationId }),
+    ).toBeUndefined()
   })
 
   it('reconciles removed windows and cleans unreferenced applications', () => {

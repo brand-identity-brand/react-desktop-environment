@@ -4,15 +4,15 @@ import {
   createCompositor,
 } from 'react-desktop-environment/compositor'
 import { createWindowManager } from 'react-desktop-environment/window-manager'
+import { Window } from 'react-desktop-environment/ui'
 
 const windowManager = createWindowManager()
 const compositor = createCompositor({
   windowManager,
   applicationRegistry: { DesktopRoot, ExampleApplication },
-  surfaceComponentRegistry: { DemoSurface },
-  defaultSurfaceComponentName: 'DemoSurface',
+  surfaceComponentRegistry: { Window },
+  defaultSurfaceComponentName: 'Window',
 })
-
 const rootWindow = addWindow()
 const rootApplication = addApplication('DesktopRoot')
 const rootSurface = addSurface(rootWindow, rootApplication)
@@ -24,6 +24,9 @@ export function CompositorDemo() {
     compositor.getSnapshot,
   )
   const managerSnapshot = windowManager.getSnapshot()
+  const hiddenSurfaces = Object.values(compositorSnapshot.surfaces).filter(
+    (surface) => surface.hidden,
+  )
 
   const addChild = () => {
     const number = Object.keys(compositorSnapshot.applications).length
@@ -31,7 +34,12 @@ export function CompositorDemo() {
     const application = addApplication('ExampleApplication', {
       label: `Application ${number}`,
     })
-    addSurface(window, application)
+    addSurface(window, application, {
+      position: {
+        x: 24 + ((number - 1) % 3) * 56,
+        y: 84 + ((number - 1) % 3) * 48,
+      },
+    })
   }
 
   return (
@@ -53,9 +61,29 @@ export function CompositorDemo() {
 
       <section className="manager-grid">
         <section className="desktop-panel">
-          <SurfaceComposer compositor={compositor} surfaceId={rootSurface.surfaceId}>
+          <SurfaceComposer
+            compositor={compositor}
+            surfaceId={rootSurface.surfaceId}
+          >
             <div className="panel-heading"><h2>Resident surfaces</h2></div>
           </SurfaceComposer>
+          <div className="taskbar">
+            <strong>Hidden windows</strong>
+            {hiddenSurfaces.map((surface) => (
+              <button
+                type="button"
+                key={surface.surfaceId}
+                onClick={() =>
+                  compositor.surface
+                    .readControls({ surfaceId: surface.surfaceId })
+                    .show()
+                }
+              >
+                Show {surface.application.props.label ?? surface.application.applicationName}
+              </button>
+            ))}
+            {hiddenSurfaces.length === 0 ? <span>None</span> : null}
+          </div>
         </section>
         <aside className="inspector-panel">
           <div className="snapshot-summary">
@@ -69,14 +97,6 @@ export function CompositorDemo() {
         </aside>
       </section>
     </main>
-  )
-}
-
-function DemoSurface({ surface, children }) {
-  return (
-    <article className="surface-record" hidden={surface.hidden}>
-      {children}
-    </article>
   )
 }
 
@@ -116,9 +136,10 @@ function addApplication(applicationName, props = {}) {
   })
 }
 
-function addSurface(window, application) {
+function addSurface(window, application, input = {}) {
   return compositor.surface.add({
     surface: compositor.surface.create({
+      ...input,
       windowId: window.windowId,
       applicationId: application.applicationId,
     }),

@@ -131,6 +131,11 @@ h2 {
   box-shadow: 0 20px 60px rgba(44, 61, 46, 0.08);
 }
 
+.desktop-panel {
+  position: relative;
+  min-height: 620px;
+}
+
 .panel-heading {
   padding: 1rem 1.2rem;
   border-bottom: 1px solid #d7ddd4;

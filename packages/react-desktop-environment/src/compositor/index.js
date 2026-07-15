@@ -9,6 +9,10 @@ window and application objects.
 The compositor facilitates these independent systems without changing their
 records. It remains separate from visual appearance; registered surface and
 application components determine how a consumer presents the composition.
+
+It supplies the standard controls that give surface interactions consistent
+meaning. Interfaces decide how people invoke those controls, while the
+compositor coordinates their effects across surface and window lifecycles.
 `
 
 export const WHAT_IS_WORKSPACE = `
@@ -48,6 +52,11 @@ const compositor = createCompositor({
   windowManager,
   applicationRegistry,
   surfaceComponentRegistry,
+  configureSurfaceControls({ controls, surfaceId }) {
+    return {
+      // Optional additions or replacements. Standard controls remain available.
+    }
+  },
 })
 
 compositor.application.create()
@@ -61,6 +70,8 @@ compositor.surface.add()
 compositor.surface.read()
 compositor.surface.readChildren()
 compositor.surface.update()
+compositor.surface.raise()
+compositor.surface.readControls()
 compositor.surface.remove()
 
 compositor.cleanup()

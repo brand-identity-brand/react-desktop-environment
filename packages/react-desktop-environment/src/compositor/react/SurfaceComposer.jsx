@@ -20,6 +20,9 @@ const requireCompositor = (compositor) => {
 // ApplicationComponent renders expensive, each mapped surface can gain its own
 // memoized rendering boundary. That is an infrastructure optimization, not a
 // requirement of the surface architecture.
+//
+// Surface controls are compositor policy. The composer only connects those
+// controls to the replaceable surface UI that invokes them.
 const SurfaceComposer = memo(function SurfaceComposerComponent({
   compositor: suppliedCompositor,
   surfaceId,
@@ -47,7 +50,9 @@ const SurfaceComposer = memo(function SurfaceComposerComponent({
         const ApplicationComponent = compositor.application.getComponent({
           applicationId: surface.applicationId,
         })
-
+        const controls = compositor.surface.readControls({
+          surfaceId: surface.surfaceId,
+        })
         return (
           <SurfaceComponent
             {...surface.props}
@@ -56,6 +61,7 @@ const SurfaceComposer = memo(function SurfaceComposerComponent({
             window={surface.window}
             application={surface.application}
             hidden={surface.hidden}
+            controls={controls}
           >
             <ApplicationComponent
               {...surface.application.props}

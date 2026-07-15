@@ -56,8 +56,9 @@ entry points make the framework boundaries visible:
   relationships;
 - `window-manager/react` is its stock React consumption interface;
 - `compositor` owns applications and surfaces that compose manager windows with
-  presentation state;
-- `ui` is reserved for a future replaceable stock visual implementation.
+  presentation state and supplies their standard controls;
+- `ui` is the replaceable stock visual implementation. Its default `Window`
+  decides which visual interactions invoke compositor-supplied controls.
 
 Each important abstraction states its conceptual responsibility through an
 `ABSTRACTION` export in its `index.js`. Implementation technology may be grouped
@@ -67,7 +68,8 @@ inside an already named abstraction, as with `window-manager/react` and
 `createCompositor.js` keeps the cohesive non-React compositor mechanism together.
 The `react` folder contains the prop-driven recursive `SurfaceComposer`. The
 compositor does not import a stock UI; consumers supply registered surface and
-application components.
+application components. The composer connects compositor controls to those
+surface components.
 
 React remains a peer dependency. Applications provide their own installation.
 The library build writes publishable entry files to

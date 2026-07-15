@@ -16,8 +16,15 @@ describe('SurfaceComposer', () => {
       }, [application.applicationId])
       return <span>{application.props.label}</span>
     }
-    function Surface({ surface, children }) {
-      return <section hidden={surface.hidden}>{children}</section>
+    function Surface({ surface, controls, children }) {
+      return (
+        <section
+          hidden={surface.hidden}
+          data-has-controls={typeof controls?.close === 'function'}
+        >
+          {children}
+        </section>
+      )
     }
     const windowManager = createWindowManager({ createId })
     const compositor = createCompositor({
@@ -41,7 +48,10 @@ describe('SurfaceComposer', () => {
     })
 
     render(
-      <SurfaceComposer compositor={compositor} surfaceId={rootSurface.surfaceId}>
+      <SurfaceComposer
+        compositor={compositor}
+        surfaceId={rootSurface.surfaceId}
+      >
         <h1>Desktop</h1>
       </SurfaceComposer>,
     )
@@ -69,6 +79,9 @@ describe('SurfaceComposer', () => {
     })
 
     expect(screen.getByText('Child application')).toBeDefined()
+    expect(
+      screen.getByText('Child application').closest('section').dataset.hasControls,
+    ).toBe('true')
     expect(mounted).toHaveBeenCalledTimes(1)
 
     act(() => compositor.surface.update({ surfaceId: childSurface.surfaceId, hidden: true }))

@@ -34,10 +34,18 @@ export default function createCompositor(options = {}) {
   const defaultSurfaceComponentName = options.defaultSurfaceComponentName
   const baseZIndex = options.baseZIndex ?? 1
   if (!Number.isFinite(baseZIndex)) throw new TypeError('baseZIndex must be finite')
+  const configureSurfaceControls = options.configureSurfaceControls
+  if (
+    configureSurfaceControls !== undefined &&
+    typeof configureSurfaceControls !== 'function'
+  ) {
+    throw new TypeError('configureSurfaceControls must be a function')
+  }
 
   let snapshot = EMPTY_SNAPSHOT
   const listeners = new Set()
   const childCache = new Map()
+  const surfaceControlsCache = new Map()
 
   const notify = () => listeners.forEach((listener) => listener())
   const commit = ({ applications = snapshot.applications, surfaces = snapshot.surfaces }) => {
@@ -251,10 +259,65 @@ export default function createCompositor(options = {}) {
       commit({ surfaces: { ...snapshot.surfaces, [surfaceId]: updated } })
       return updated
     },
+    raise({ surfaceId } = {}) {
+      const current = requireSurface(surfaceId)
+      const updated = Object.freeze({
+        ...current,
+        zIndex: nextZIndex(),
+      })
+      commit({ surfaces: { ...snapshot.surfaces, [surfaceId]: updated } })
+      return updated
+    },
+    readControls({ surfaceId } = {}) {
+      requireSurface(surfaceId)
+      const cached = surfaceControlsCache.get(surfaceId)
+      if (cached) return cached
+
+      const controls = Object.freeze({
+        focus() {
+          return surface.raise({ surfaceId })
+        },
+        hide() {
+          return surface.update({ surfaceId, hidden: true })
+        },
+        show() {
+          surface.update({ surfaceId, hidden: false })
+          return surface.raise({ surfaceId })
+        },
+        move({ position } = {}) {
+          return surface.update({ surfaceId, position })
+        },
+        close() {
+          const current = requireSurface(surfaceId)
+          const removedWindowIds = windowManager.window.remove({
+            windowId: current.windowId,
+          })
+          return Object.freeze({
+            surfaceId,
+            removedWindowIds,
+            ...cleanup(),
+          })
+        },
+      })
+      const overrides = configureSurfaceControls?.({ controls, surfaceId })
+      if (
+        overrides !== undefined &&
+        (overrides === null || typeof overrides !== 'object')
+      ) {
+        throw new TypeError('configureSurfaceControls must return an object or undefined')
+      }
+      const configuredControls = Object.freeze({
+        ...controls,
+        ...(overrides ?? {}),
+      })
+      surfaceControlsCache.set(surfaceId, configuredControls)
+      return configuredControls
+    },
     remove({ surfaceId } = {}) {
       requireSurface(surfaceId)
       const surfaces = { ...snapshot.surfaces }
       delete surfaces[surfaceId]
+      surfaceControlsCache.delete(surfaceId)
       commit({ surfaces })
       return surfaceId
     },
@@ -270,6 +333,7 @@ export default function createCompositor(options = {}) {
       const window = windowManager.window.read({ windowId: current.windowId })
       if (!window) {
         changed = true
+        surfaceControlsCache.delete(surfaceId)
         continue
       }
       if (window !== current.window) {
@@ -292,6 +356,7 @@ export default function createCompositor(options = {}) {
         !snapshot.applications[record.applicationId]
       ) {
         removedSurfaceIds.push(surfaceId)
+        surfaceControlsCache.delete(surfaceId)
       } else {
         surfaces[surfaceId] = record
       }
