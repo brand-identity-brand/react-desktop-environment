@@ -10,11 +10,15 @@ describe('SurfaceComposer', () => {
     let sequence = 0
     const createId = (kind) => `${kind}:${++sequence}`
     const mounted = vi.fn()
-    function Application({ application }) {
+    function Application({ application, controls }) {
       useEffect(() => {
         mounted(application.applicationId)
       }, [application.applicationId])
-      return <span>{application.props.label}</span>
+      return (
+        <span data-has-application-controls={typeof controls?.selectChild === 'function'}>
+          {application.props.label}
+        </span>
+      )
     }
     function Surface({ surface, controls, children }) {
       return (
@@ -79,6 +83,8 @@ describe('SurfaceComposer', () => {
     })
 
     expect(screen.getByText('Child application')).toBeDefined()
+    expect(screen.getByText('Child application').dataset.hasApplicationControls)
+      .toBe('true')
     expect(
       screen.getByText('Child application').closest('section').dataset.hasControls,
     ).toBe('true')

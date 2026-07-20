@@ -51,6 +51,7 @@ describe('createCompositor', () => {
       workspaceId: 'default',
       zIndex: 1,
       hidden: false,
+      selectedChildSurfaceId: null,
       props: {},
     })
     expect(surface.surfaceId).not.toBe(window.windowId)
@@ -132,6 +133,46 @@ describe('createCompositor', () => {
     )
   })
 
+  it('stores immediate-child selection on the parent surface', () => {
+    const { windowManager, compositor } = createSystems()
+    const parentWindow = addWindow(windowManager)
+    const childWindow = addWindow(windowManager, {
+      parentWindowId: parentWindow.windowId,
+    })
+    const unrelatedWindow = addWindow(windowManager)
+    const parentSurface = addSurface(compositor, {
+      windowId: parentWindow.windowId,
+      applicationId: addApplication(compositor).applicationId,
+    })
+    const childSurface = addSurface(compositor, {
+      windowId: childWindow.windowId,
+      applicationId: addApplication(compositor).applicationId,
+    })
+    const unrelatedSurface = addSurface(compositor, {
+      windowId: unrelatedWindow.windowId,
+      applicationId: addApplication(compositor).applicationId,
+    })
+
+    const selected = compositor.surface.selectChild({
+      surfaceId: parentSurface.surfaceId,
+      childSurfaceId: childSurface.surfaceId,
+    })
+
+    expect(selected.selectedChildSurfaceId).toBe(childSurface.surfaceId)
+    expect(compositor.surface.readSelectedChild({
+      surfaceId: parentSurface.surfaceId,
+    })).toBe(childSurface)
+    expect(() => compositor.surface.selectChild({
+      surfaceId: parentSurface.surfaceId,
+      childSurfaceId: unrelatedSurface.surfaceId,
+    })).toThrow(/not an immediate child/)
+
+    compositor.surface.remove({ surfaceId: childSurface.surfaceId })
+    expect(compositor.surface.read({
+      surfaceId: parentSurface.surfaceId,
+    }).selectedChildSurfaceId).toBeNull()
+  })
+
   it('supplies stable surface controls with configurable policy', () => {
     const configured = []
     const { windowManager, compositor } = createSystems({
@@ -162,6 +203,7 @@ describe('createCompositor', () => {
     expect(controls.move({ position: { x: 20, y: 30 } })).toMatchObject({
       position: { x: 20, y: 30 },
     })
+    expect(controls.selectChild).toBeTypeOf('function')
     expect(controls.focus()).toMatchObject({ zIndex: 3 })
 
     expect(controls.close()).toEqual({

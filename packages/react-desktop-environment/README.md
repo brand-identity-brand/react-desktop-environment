@@ -50,7 +50,16 @@ const surface = compositor.surface.create({
   applicationId: application.applicationId,
 })
 compositor.surface.add({ surface })
+
+compositor.surface.selectChild({
+  surfaceId: rootSurface.surfaceId,
+  childSurfaceId: surface.surfaceId,
+})
 ```
+
+Each parent Surface owns selection only among its immediate child Surfaces.
+This keeps recursive selection in compositor state while Application and Window
+records remain independent.
 
 `SurfaceComposer` receives its stable dependencies explicitly. It uses no
 context and subscribes directly to the child surfaces of the supplied surface.

@@ -83,11 +83,41 @@ export default function createCompositor(options = {}) {
     }
     return Component
   }
-  const validateSurfaceState = ({ surfaceId, zIndex, hidden, workspaceId }) => {
+  const validateSurfaceState = ({
+    surfaceId,
+    selectedChildSurfaceId,
+    zIndex,
+    hidden,
+    workspaceId,
+  }) => {
     if (!surfaceId) throw new Error('surfaceId is required')
     if (!workspaceId) throw new Error('surface workspaceId is required')
     if (!Number.isFinite(zIndex)) throw new TypeError('surface zIndex must be finite')
     if (typeof hidden !== 'boolean') throw new TypeError('surface hidden must be boolean')
+    if (
+      selectedChildSurfaceId !== null
+      && selectedChildSurfaceId !== undefined
+      && typeof selectedChildSurfaceId !== 'string'
+    ) {
+      throw new TypeError('surface selectedChildSurfaceId must be a string or null')
+    }
+  }
+  const isImmediateChildSurface = (parentSurface, childSurface) => (
+    childSurface?.window?.parentWindowId === parentSurface.windowId
+  )
+  const reconcileSurfaceSelections = (surfaces) => {
+    let reconciled = surfaces
+    for (const [surfaceId, parentSurface] of Object.entries(surfaces)) {
+      if (parentSurface.selectedChildSurfaceId == null) continue
+      const childSurface = surfaces[parentSurface.selectedChildSurfaceId]
+      if (isImmediateChildSurface(parentSurface, childSurface)) continue
+      if (reconciled === surfaces) reconciled = { ...surfaces }
+      reconciled[surfaceId] = Object.freeze({
+        ...parentSurface,
+        selectedChildSurfaceId: null,
+      })
+    }
+    return reconciled
   }
   const nextZIndex = () =>
     Math.max(
@@ -166,6 +196,7 @@ export default function createCompositor(options = {}) {
       workspaceId = defaultWorkspaceId,
       zIndex = nextZIndex(),
       hidden = false,
+      selectedChildSurfaceId = null,
       position,
       size,
       props = {},
@@ -182,6 +213,7 @@ export default function createCompositor(options = {}) {
         workspaceId,
         zIndex,
         hidden,
+        selectedChildSurfaceId,
         ...(position === undefined ? {} : { position }),
         ...(size === undefined ? {} : { size }),
         props,
@@ -235,6 +267,27 @@ export default function createCompositor(options = {}) {
       })
       return value
     },
+    readSelectedChild({ surfaceId } = {}) {
+      const parentSurface = requireSurface(surfaceId)
+      if (parentSurface.selectedChildSurfaceId == null) return undefined
+      const childSurface = snapshot.surfaces[parentSurface.selectedChildSurfaceId]
+      return isImmediateChildSurface(parentSurface, childSurface)
+        ? childSurface
+        : undefined
+    },
+    selectChild({ surfaceId, childSurfaceId } = {}) {
+      const parentSurface = requireSurface(surfaceId)
+      if (childSurfaceId == null) {
+        return surface.update({ surfaceId, selectedChildSurfaceId: null })
+      }
+      const childSurface = requireSurface(childSurfaceId)
+      if (!isImmediateChildSurface(parentSurface, childSurface)) {
+        throw new Error(
+          `Surface ${childSurfaceId} is not an immediate child of ${surfaceId}`,
+        )
+      }
+      return surface.update({ surfaceId, selectedChildSurfaceId: childSurfaceId })
+    },
     update({ surfaceId, window: suppliedWindow, application: suppliedApplication, ...changes } = {}) {
       if (suppliedWindow !== undefined || suppliedApplication !== undefined) {
         throw new Error('surface.update resolves window and application references itself')
@@ -287,6 +340,9 @@ export default function createCompositor(options = {}) {
         move({ position } = {}) {
           return surface.update({ surfaceId, position })
         },
+        selectChild(childSurfaceId) {
+          return surface.selectChild({ surfaceId, childSurfaceId })
+        },
         close() {
           const current = requireSurface(surfaceId)
           const removedWindowIds = windowManager.window.remove({
@@ -318,7 +374,7 @@ export default function createCompositor(options = {}) {
       const surfaces = { ...snapshot.surfaces }
       delete surfaces[surfaceId]
       surfaceControlsCache.delete(surfaceId)
-      commit({ surfaces })
+      commit({ surfaces: reconcileSurfaceSelections(surfaces) })
       return surfaceId
     },
     getComponent({ surfaceId } = {}) {
@@ -343,7 +399,7 @@ export default function createCompositor(options = {}) {
         surfaces[surfaceId] = current
       }
     }
-    if (changed) commit({ surfaces })
+    if (changed) commit({ surfaces: reconcileSurfaceSelections(surfaces) })
   }
   const unsubscribeWindowManager = windowManager.subscribe(reconcileWindows)
 
@@ -370,7 +426,7 @@ export default function createCompositor(options = {}) {
     if (removedSurfaceIds.length || removedApplicationIds.length) {
       const removed = new Set(removedApplicationIds)
       commit({
-        surfaces,
+        surfaces: reconcileSurfaceSelections(surfaces),
         applications: Object.fromEntries(
           Object.entries(snapshot.applications).filter(
             ([applicationId]) => !removed.has(applicationId),

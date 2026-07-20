@@ -41,6 +41,7 @@ surfaces[surfaceId] = {
   workspaceId,
   zIndex,
   hidden,
+  selectedChildSurfaceId,
   position,
   size,
   props,
@@ -69,6 +70,8 @@ compositor.surface.create()
 compositor.surface.add()
 compositor.surface.read()
 compositor.surface.readChildren()
+compositor.surface.readSelectedChild()
+compositor.surface.selectChild()
 compositor.surface.update()
 compositor.surface.raise()
 compositor.surface.readControls()

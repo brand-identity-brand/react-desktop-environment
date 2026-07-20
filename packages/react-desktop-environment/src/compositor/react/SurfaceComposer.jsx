@@ -66,6 +66,7 @@ const SurfaceComposer = memo(function SurfaceComposerComponent({
             <ApplicationComponent
               {...surface.application.props}
               key={surface.applicationId}
+              controls={controls}
               surface={surface}
               window={surface.window}
               application={surface.application}
