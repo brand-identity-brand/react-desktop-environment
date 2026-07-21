@@ -6,28 +6,34 @@
   "type": "module",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "src"
   ],
   "main": "./dist/react-desktop-environment.cjs",
   "module": "./dist/react-desktop-environment.js",
   "exports": {
     ".": {
+      "development": "./src/index.js",
       "import": "./dist/react-desktop-environment.js",
       "require": "./dist/react-desktop-environment.cjs"
     },
     "./window-manager": {
+      "development": "./src/window-manager/index.js",
       "import": "./dist/window-manager.js",
       "require": "./dist/window-manager.cjs"
     },
     "./window-manager/react": {
+      "development": "./src/window-manager/react/index.js",
       "import": "./dist/window-manager-react.js",
       "require": "./dist/window-manager-react.cjs"
     },
     "./compositor": {
+      "development": "./src/compositor/index.js",
       "import": "./dist/compositor.js",
       "require": "./dist/compositor.cjs"
     },
     "./ui": {
+      "development": "./src/ui/index.js",
       "import": "./dist/ui.js",
       "require": "./dist/ui.cjs"
     }
