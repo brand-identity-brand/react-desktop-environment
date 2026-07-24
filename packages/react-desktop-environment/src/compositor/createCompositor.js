@@ -33,6 +33,8 @@ export default function createCompositor(options = {}) {
   const defaultWorkspaceId = options.defaultWorkspaceId ?? 'default'
   const defaultSurfaceComponentName = options.defaultSurfaceComponentName
   const baseZIndex = options.baseZIndex ?? 1
+  const retainUnreferencedApplications =
+    options.retainUnreferencedApplications ?? false
   if (!Number.isFinite(baseZIndex)) throw new TypeError('baseZIndex must be finite')
   const configureSurfaceControls = options.configureSurfaceControls
   if (
@@ -196,6 +198,7 @@ export default function createCompositor(options = {}) {
       workspaceId = defaultWorkspaceId,
       zIndex = nextZIndex(),
       hidden = false,
+      fullscreen = false,
       selectedChildSurfaceId = null,
       position,
       size,
@@ -213,6 +216,7 @@ export default function createCompositor(options = {}) {
         workspaceId,
         zIndex,
         hidden,
+        fullscreen,
         selectedChildSurfaceId,
         ...(position === undefined ? {} : { position }),
         ...(size === undefined ? {} : { size }),
@@ -288,6 +292,61 @@ export default function createCompositor(options = {}) {
       }
       return surface.update({ surfaceId, selectedChildSurfaceId: childSurfaceId })
     },
+    activateChild({ surfaceId, childSurfaceId } = {}) {
+      const parentSurface = requireSurface(surfaceId)
+      const childSurface = requireSurface(childSurfaceId)
+      if (!isImmediateChildSurface(parentSurface, childSurface)) {
+        throw new Error(
+          `Surface ${childSurfaceId} is not an immediate child of ${surfaceId}`,
+        )
+      }
+
+      const activatedChild = Object.freeze({
+        ...childSurface,
+        hidden: false,
+        zIndex: nextZIndex(),
+        attentionRevision: (childSurface.attentionRevision ?? 0) + 1,
+      })
+      const selectedParent = Object.freeze({
+        ...parentSurface,
+        selectedChildSurfaceId: childSurfaceId,
+      })
+      commit({
+        surfaces: {
+          ...snapshot.surfaces,
+          [surfaceId]: selectedParent,
+          [childSurfaceId]: activatedChild,
+        },
+      })
+      return activatedChild
+    },
+    raiseChild({ surfaceId, childSurfaceId } = {}) {
+      const parentSurface = requireSurface(surfaceId)
+      const childSurface = requireSurface(childSurfaceId)
+      if (!isImmediateChildSurface(parentSurface, childSurface)) {
+        throw new Error(
+          `Surface ${childSurfaceId} is not an immediate child of ${surfaceId}`,
+        )
+      }
+
+      const raisedChild = Object.freeze({
+        ...childSurface,
+        zIndex: nextZIndex(),
+        attentionRevision: (childSurface.attentionRevision ?? 0) + 1,
+      })
+      const selectedParent = Object.freeze({
+        ...parentSurface,
+        selectedChildSurfaceId: childSurfaceId,
+      })
+      commit({
+        surfaces: {
+          ...snapshot.surfaces,
+          [surfaceId]: selectedParent,
+          [childSurfaceId]: raisedChild,
+        },
+      })
+      return raisedChild
+    },
     update({ surfaceId, window: suppliedWindow, application: suppliedApplication, ...changes } = {}) {
       if (suppliedWindow !== undefined || suppliedApplication !== undefined) {
         throw new Error('surface.update resolves window and application references itself')
@@ -339,6 +398,34 @@ export default function createCompositor(options = {}) {
         },
         move({ position } = {}) {
           return surface.update({ surfaceId, position })
+        },
+        resize({ position, size } = {}) {
+          return surface.update({ surfaceId, position, size })
+        },
+        fullscreen({ position, size } = {}) {
+          const current = requireSurface(surfaceId)
+          if (current.fullscreen) return current
+          return surface.update({
+            surfaceId,
+            fullscreen: true,
+            position,
+            size,
+            restoreGeometry: {
+              position: current.position,
+              size: current.size,
+            },
+          })
+        },
+        exitFullscreen() {
+          const current = requireSurface(surfaceId)
+          if (!current.fullscreen) return current
+          return surface.update({
+            surfaceId,
+            fullscreen: false,
+            position: current.restoreGeometry?.position,
+            size: current.restoreGeometry?.size,
+            restoreGeometry: undefined,
+          })
         },
         selectChild(childSurfaceId) {
           return surface.selectChild({ surfaceId, childSurfaceId })
@@ -420,9 +507,11 @@ export default function createCompositor(options = {}) {
     const referencedApplicationIds = new Set(
       Object.values(surfaces).map(({ applicationId }) => applicationId),
     )
-    const removedApplicationIds = Object.keys(snapshot.applications).filter(
-      (applicationId) => !referencedApplicationIds.has(applicationId),
-    )
+    const removedApplicationIds = retainUnreferencedApplications
+      ? []
+      : Object.keys(snapshot.applications).filter(
+          (applicationId) => !referencedApplicationIds.has(applicationId),
+        )
     if (removedSurfaceIds.length || removedApplicationIds.length) {
       const removed = new Set(removedApplicationIds)
       commit({

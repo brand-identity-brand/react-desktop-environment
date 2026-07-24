@@ -51,6 +51,7 @@ describe('createCompositor', () => {
       workspaceId: 'default',
       zIndex: 1,
       hidden: false,
+      fullscreen: false,
       selectedChildSurfaceId: null,
       props: {},
     })
@@ -173,6 +174,75 @@ describe('createCompositor', () => {
     }).selectedChildSurfaceId).toBeNull()
   })
 
+  it('shows, raises, selects, and repeatedly signals an activated child', () => {
+    const { windowManager, compositor } = createSystems()
+    const parentWindow = addWindow(windowManager)
+    const childWindow = addWindow(windowManager, {
+      parentWindowId: parentWindow.windowId,
+    })
+    const parentSurface = addSurface(compositor, {
+      windowId: parentWindow.windowId,
+      applicationId: addApplication(compositor).applicationId,
+    })
+    const childSurface = addSurface(compositor, {
+      windowId: childWindow.windowId,
+      applicationId: addApplication(compositor).applicationId,
+      hidden: true,
+    })
+    const siblingWindow = addWindow(windowManager, {
+      parentWindowId: parentWindow.windowId,
+    })
+    const siblingSurface = addSurface(compositor, {
+      windowId: siblingWindow.windowId,
+      applicationId: addApplication(compositor).applicationId,
+    })
+
+    const firstActivation = compositor.surface.activateChild({
+      surfaceId: parentSurface.surfaceId,
+      childSurfaceId: childSurface.surfaceId,
+    })
+    const secondActivation = compositor.surface.activateChild({
+      surfaceId: parentSurface.surfaceId,
+      childSurfaceId: childSurface.surfaceId,
+    })
+
+    expect(firstActivation).toMatchObject({
+      hidden: false,
+      attentionRevision: 1,
+    })
+    expect(secondActivation).toMatchObject({
+      hidden: false,
+      attentionRevision: 2,
+    })
+    expect(secondActivation.zIndex).toBeGreaterThan(firstActivation.zIndex)
+    expect(compositor.surface.read({
+      surfaceId: siblingSurface.surfaceId,
+    })).toMatchObject({
+      hidden: false,
+      zIndex: siblingSurface.zIndex,
+    })
+    expect(compositor.surface.readSelectedChild({
+      surfaceId: parentSurface.surfaceId,
+    })?.surfaceId).toBe(childSurface.surfaceId)
+
+    compositor.surface.update({
+      surfaceId: siblingSurface.surfaceId,
+      hidden: true,
+    })
+    const raisedHiddenChild = compositor.surface.raiseChild({
+      surfaceId: parentSurface.surfaceId,
+      childSurfaceId: siblingSurface.surfaceId,
+    })
+    expect(raisedHiddenChild).toMatchObject({
+      hidden: true,
+      attentionRevision: 1,
+    })
+    expect(raisedHiddenChild.zIndex).toBeGreaterThan(secondActivation.zIndex)
+    expect(compositor.surface.readSelectedChild({
+      surfaceId: parentSurface.surfaceId,
+    })?.surfaceId).toBe(siblingSurface.surfaceId)
+  })
+
   it('supplies stable surface controls with configurable policy', () => {
     const configured = []
     const { windowManager, compositor } = createSystems({
@@ -202,6 +272,26 @@ describe('createCompositor', () => {
     expect(controls.show()).toMatchObject({ hidden: false, zIndex: 2 })
     expect(controls.move({ position: { x: 20, y: 30 } })).toMatchObject({
       position: { x: 20, y: 30 },
+    })
+    expect(controls.resize({
+      position: { x: 10, y: 30 },
+      size: { width: 420, height: 360 },
+    })).toMatchObject({
+      position: { x: 10, y: 30 },
+      size: { width: 420, height: 360 },
+    })
+    expect(controls.fullscreen({
+      position: { x: 0, y: 0 },
+      size: { width: 1024, height: 768 },
+    })).toMatchObject({
+      fullscreen: true,
+      position: { x: 0, y: 0 },
+      size: { width: 1024, height: 768 },
+    })
+    expect(controls.exitFullscreen()).toMatchObject({
+      fullscreen: false,
+      position: { x: 10, y: 30 },
+      size: { width: 420, height: 360 },
     })
     expect(controls.selectChild).toBeTypeOf('function')
     expect(controls.focus()).toMatchObject({ zIndex: 3 })

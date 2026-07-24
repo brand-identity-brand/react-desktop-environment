@@ -41,6 +41,7 @@ surfaces[surfaceId] = {
   workspaceId,
   zIndex,
   hidden,
+  fullscreen,
   selectedChildSurfaceId,
   position,
   size,
@@ -72,9 +73,13 @@ compositor.surface.read()
 compositor.surface.readChildren()
 compositor.surface.readSelectedChild()
 compositor.surface.selectChild()
+compositor.surface.activateChild()
+compositor.surface.raiseChild()
 compositor.surface.update()
 compositor.surface.raise()
 compositor.surface.readControls()
+// Standard controls include focus, hide, show, move, resize, fullscreen,
+// exitFullscreen, and close.
 compositor.surface.remove()
 
 compositor.cleanup()
