@@ -24,6 +24,7 @@ const requireCompositor = (compositor) => {
 // Surface controls are compositor policy. The composer only connects those
 // controls to the replaceable surface UI that invokes them.
 const SurfaceComposer = memo(function SurfaceComposerComponent({
+  applicationContext,
   compositor: suppliedCompositor,
   surfaceId,
   children,
@@ -53,6 +54,17 @@ const SurfaceComposer = memo(function SurfaceComposerComponent({
         const controls = compositor.surface.readControls({
           surfaceId: surface.surfaceId,
         })
+        const ApplicationContext = applicationContext
+        const applicationElement = (
+          <ApplicationComponent
+            {...surface.application.props}
+            key={surface.applicationId}
+            controls={controls}
+            surface={surface}
+            window={surface.window}
+            application={surface.application}
+          />
+        )
         return (
           <SurfaceComponent
             {...surface.props}
@@ -63,16 +75,18 @@ const SurfaceComposer = memo(function SurfaceComposerComponent({
             hidden={surface.hidden}
             controls={controls}
           >
-            <ApplicationComponent
-              {...surface.application.props}
-              key={surface.applicationId}
-              controls={controls}
-              surface={surface}
-              window={surface.window}
-              application={surface.application}
-            />
+            {ApplicationContext
+              ? (
+                  <ApplicationContext.Provider
+                    value={surface.application}
+                  >
+                    {applicationElement}
+                  </ApplicationContext.Provider>
+                )
+              : applicationElement}
 
             <SurfaceComposer
+              applicationContext={applicationContext}
               compositor={compositor}
               surfaceId={surface.surfaceId}
             />
