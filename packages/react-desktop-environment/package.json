@@ -9,33 +9,26 @@
     "README.md",
     "src"
   ],
-  "main": "./dist/react-desktop-environment.cjs",
-  "module": "./dist/react-desktop-environment.js",
   "exports": {
     ".": {
       "development": "./src/index.js",
-      "import": "./dist/react-desktop-environment.js",
-      "require": "./dist/react-desktop-environment.cjs"
+      "import": "./dist/react-desktop-environment.js"
     },
     "./window-manager": {
       "development": "./src/window-manager/index.js",
-      "import": "./dist/window-manager.js",
-      "require": "./dist/window-manager.cjs"
+      "import": "./dist/window-manager.js"
     },
     "./window-manager/react": {
       "development": "./src/window-manager/react/index.js",
-      "import": "./dist/window-manager-react.js",
-      "require": "./dist/window-manager-react.cjs"
+      "import": "./dist/window-manager-react.js"
     },
     "./compositor": {
       "development": "./src/compositor/index.js",
-      "import": "./dist/compositor.js",
-      "require": "./dist/compositor.cjs"
+      "import": "./dist/compositor.js"
     },
     "./ui": {
       "development": "./src/ui/index.js",
-      "import": "./dist/ui.js",
-      "require": "./dist/ui.cjs"
+      "import": "./dist/ui.js"
     }
   },
   "scripts": {
@@ -48,11 +41,11 @@
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
-    "@vitejs/plugin-react": "^6.0.4",
-    "jsdom": "^30.0.0",
+    "@vitejs/plugin-react": "^6.0.5",
+    "jsdom": "^30.0.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "vite": "^8.1.5",
+    "vite": "^8.2.1",
     "vitest": "^4.1.10"
   }
 }

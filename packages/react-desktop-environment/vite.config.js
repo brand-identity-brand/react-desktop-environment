@@ -23,10 +23,8 @@ export default defineConfig({
           new URL('./src/ui/index.js', import.meta.url),
         ),
       },
-      name: 'ReactDesktopEnvironment',
-      formats: ['es', 'cjs'],
-      fileName: (format, entryName) =>
-        `${entryName}.${format === 'es' ? 'js' : 'cjs'}`,
+      formats: ['es'],
+      fileName: (_format, entryName) => `${entryName}.js`,
     },
     rollupOptions: {
       external: ['react', 'react/jsx-runtime'],
