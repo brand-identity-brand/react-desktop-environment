@@ -177,7 +177,9 @@ runtime owners and tests; ordinary Applets declare named state through the hook.
 
 Hook declarations adopt live values and the clean baseline synchronously. Their
 subscriber notifications run after the current render stack, including when
-React abandons that render. Ordinary state writes still notify synchronously.
+React abandons that render. Checkpoint cache invalidation remains synchronous,
+so capture and dirty-state reads immediately see the adopted state. Ordinary
+state writes still notify synchronously.
 
 ## Surface state and root checkpoints
 

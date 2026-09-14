@@ -93,6 +93,19 @@ assert.equal(JSON.stringify(initial.checkpoint), JSON.stringify(saved.snapshot))
 const recovery = createAppletPersistence({ scopeId: 'scope:one', source: restored.checkpoint, store })
 assert.equal((await recovery.flush()).ok, true)
 assert.equal((await recovery.dispose({ flush: true })).ok, true)
+const columnState = { applicationId: originalApplicationId, stateName: 'columns' }
+restored.appletState.ensure({ ...columnState, initialValue: ['product'] })
+restored.checkpoint.getSnapshot()
+restored.appletState.ensure({
+  ...columnState,
+  initialValue: ['mixed'],
+  adopt: (value) => value.every((column) => column === 'mixed') ? value : undefined,
+  deferNotifications: true,
+})
+const adopted = restored.checkpoint.capture()
+assert.equal(JSON.stringify(adopted.snapshot.find(({ application }) => application.applicationId === originalApplicationId).appletState.columns), JSON.stringify(['mixed']))
+assert.equal(restored.checkpoint.isDirty(), false)
+restored.checkpoint.release(adopted)
 await act(async () => { restoredRoot.unmount() })
 restored.compositor.destroy()
 

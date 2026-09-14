@@ -471,14 +471,12 @@ export function createAppletStateStore({
         }
         record.cleanDeclarations.add(stateName)
       }
-      if ((changed && previous) || (persistent && (changed || cleanChanged))) {
-        const publish = () => {
-          if (changed && previous) notify(applicationId, stateName)
-          if (persistent && (changed || cleanChanged)) notifyCheckpoint()
-        }
+      if (changed && previous) {
+        const publish = () => notify(applicationId, stateName)
         if (deferNotifications) queueMicrotask(publish)
         else publish()
       }
+      if (persistent && (changed || cleanChanged)) notifyCheckpoint()
       return record.values.get(stateName)
     },
     getSetter({ applicationId, stateName }) {

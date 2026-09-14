@@ -42,6 +42,34 @@ function capture(engine) {
 }
 
 describe('AppletEngine Surface state checkpoint', () => {
+  it('captures synchronous adoption before deferred React declaration notifications', async () => {
+    const engine = createEngine()
+    const state = { applicationId: engine.rootApplicationId, stateName: 'columns' }
+    const adoptMixed = (value) => value.every((column) => column === 'mixed') ? value : undefined
+    try {
+      engine.appletState.ensure({ ...state, initialValue: ['product'] })
+      expect(capture(engine)[0].appletState.columns).toEqual(['product'])
+      engine.appletState.ensure({ ...state, initialValue: ['mixed'], adopt: adoptMixed, deferNotifications: true })
+      expect(capture(engine)[0].appletState.columns).toEqual(['mixed'])
+      expect(engine.checkpoint.isDirty()).toBe(false)
+      await Promise.resolve()
+
+      engine.appletState.write({ ...state, value: ['product'] })
+      expect(engine.checkpoint.isDirty()).toBe(true)
+      engine.appletState.ensure({
+        ...state,
+        initialValue: ['mixed'],
+        adopt: (value) => adoptMixed(value),
+        deferNotifications: true,
+      })
+      expect(capture(engine)[0].appletState.columns).toEqual(['mixed'])
+      expect(engine.checkpoint.isDirty()).toBe(false)
+      await Promise.resolve()
+    } finally {
+      engine.compositor.destroy()
+    }
+  })
+
   it('restores an occurrence root after movement into another theme root', () => {
     function Origin() {}
     Origin.meta = Object.freeze({
