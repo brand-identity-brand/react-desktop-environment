@@ -19,6 +19,9 @@ export default defineConfig({
         compositor: fileURLToPath(
           new URL('./src/compositor/index.js', import.meta.url),
         ),
+        'applet-engine': fileURLToPath(new URL('./src/applet-engine/index.js', import.meta.url)),
+        'applet-persistence': fileURLToPath(new URL('./src/applet-persistence/index.js', import.meta.url)),
+        'applet-persistence-indexed-db': fileURLToPath(new URL('./src/applet-persistence/indexed-db/index.js', import.meta.url)),
         ui: fileURLToPath(
           new URL('./src/ui/index.js', import.meta.url),
         ),

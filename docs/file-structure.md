@@ -40,6 +40,9 @@ react-desktop-environment/
 │           │   ├── createCompositor.js
 │           │   ├── index.js
 │           │   └── react/
+│           ├── applet-engine/
+│           ├── applet-persistence/
+│           │   └── indexed-db/
 │           ├── ui/
 │           └── index.js
 ├── docs/
@@ -57,6 +60,11 @@ entry points make the framework boundaries visible:
 - `window-manager/react` is its stock React consumption interface;
 - `compositor` owns applications and surfaces that compose manager windows with
   presentation state and supplies their standard controls;
+- `applet-engine` owns recursive definitions, engine and occurrence lifetime,
+  Application state, generic Deck mechanics, checkpoints, and theme context;
+- `applet-persistence` mirrors complete checkpoints through storage-neutral
+  sources/stores and opaque scopes; its `indexed-db` subpath is an explicit
+  technology adapter with host-selected physical database configuration;
 - `ui` is the replaceable stock visual implementation. Its default `Window`
   decides which visual interactions invoke compositor-supplied controls.
 
@@ -89,3 +97,13 @@ presentation behavior.
 
 The private root workspace coordinates shared development, build, and test
 commands.
+
+## Applet composition boundary
+
+The Applet engine builds on the existing window manager and compositor. Its
+composition material supplies reference presentation, root providers and
+boundaries, Deck visual material, and root defaults. Generic Deck controllers,
+state, selection, residence, and checkpoint behavior remain package-owned;
+product visuals, drag declarations, attention relations, authentication, and
+domain connections remain consumer-owned. The detailed public contract is in
+[Applet runtime](../packages/react-desktop-environment/src/applet-engine/README.md).

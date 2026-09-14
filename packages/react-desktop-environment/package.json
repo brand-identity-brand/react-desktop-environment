@@ -29,11 +29,24 @@
     "./ui": {
       "development": "./src/ui/index.js",
       "import": "./dist/ui.js"
+    },
+    "./applet-engine": {
+      "development": "./src/applet-engine/index.js",
+      "import": "./dist/applet-engine.js"
+    },
+    "./applet-persistence": {
+      "development": "./src/applet-persistence/index.js",
+      "import": "./dist/applet-persistence.js"
+    },
+    "./applet-persistence/indexed-db": {
+      "development": "./src/applet-persistence/indexed-db/index.js",
+      "import": "./dist/applet-persistence-indexed-db.js"
     }
   },
   "scripts": {
     "build": "vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:package": "node scripts/verify-packed-consumer.js"
   },
   "peerDependencies": {
     "react": "^19.2.8"
@@ -46,6 +59,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "vite": "^8.2.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "fake-indexeddb": "^6.2.4"
   }
 }
