@@ -81,7 +81,9 @@ const composition = {
 
 `ReferenceSurface` renders registered reference placements.
 `Provider` wraps the runtime's React content and receives the optional `dnd`
-props. `Boundary` establishes a consumer's recursive presentation boundary.
+props. `Boundary` establishes a definition binder's recursive presentation
+boundary. Raw `AppletEngine` composition does not insert that definition
+boundary: an injected root can render its references through the root composer.
 `ThemeProvider` may compose additional consumer context around the exported
 generic theme provider; it must retain that canonical palette context.
 `rootDefaults` supplies absent product material on a nonmutating adaptation of

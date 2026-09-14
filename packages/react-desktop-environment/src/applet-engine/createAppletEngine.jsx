@@ -24,12 +24,15 @@ export default function createAppletEngine(Applet, { composition } = {}) {
     desktopEnvironment,
     ...props
   }) {
+    const Boundary = composition?.Boundary ?? React.Fragment
     return (
       <AppletEnvironment
         defaultDesktopEnvironment={applet.desktopEnvironment}
         desktopEnvironment={desktopEnvironment}
       >
-        <AppletEngine {...props} applet={applet} composition={composition} />
+        <Boundary>
+          <AppletEngine {...props} applet={applet} composition={composition} />
+        </Boundary>
       </AppletEnvironment>
     )
   }

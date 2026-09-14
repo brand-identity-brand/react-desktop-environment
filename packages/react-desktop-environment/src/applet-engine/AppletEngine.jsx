@@ -1723,7 +1723,6 @@ function AppletEngineRuntime({
 
   const Provider = resolvedEngine.composition.Provider ?? PassThrough
   const ThemeProvider = resolvedEngine.composition.ThemeProvider ?? AppletThemeProvider
-  const Boundary = resolvedEngine.composition.Boundary ?? PassThrough
 
   const content = hostsRuntime
     ? (
@@ -1754,7 +1753,7 @@ function AppletEngineRuntime({
     <AppletEngineContext.Provider value={resolvedEngine}>
       <AppletEngineOwnershipContext.Provider value={ownsEngine}>
         <Provider {...dnd}>
-          <Boundary>{content}</Boundary>
+          {content}
         </Provider>
       </AppletEngineOwnershipContext.Provider>
     </AppletEngineContext.Provider>

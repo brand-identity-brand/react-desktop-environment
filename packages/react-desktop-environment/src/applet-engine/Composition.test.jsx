@@ -151,4 +151,21 @@ describe('independent Applet composition', () => {
     expect(() => AppletEngine.create({ applet: tree({ addable: 'yes' }), desktopEnvironment: environment }))
       .toThrow('addable must be a boolean')
   })
+
+  it('keeps raw injected root references visible outside a definition composition boundary', () => {
+    const applet = tree()
+    const composition = { Boundary: () => null }
+    const engine = AppletEngine.create({ applet, desktopEnvironment: environment, composition })
+    engines.push(engine)
+    const view = render(
+      <AppletEnvironment desktopEnvironment={environment}>
+        <AppletEngine applet={applet} engine={engine} />
+      </AppletEnvironment>,
+    )
+    expect(view.getByRole('textbox', { name: 'note' }).value).toBe('draft')
+    view.unmount()
+    const Binding = createAppletEngine(applet, { composition })
+    const bound = render(<Binding engine={engine} />)
+    expect(bound.queryByRole('textbox', { name: 'note' })).toBeNull()
+  })
 })
