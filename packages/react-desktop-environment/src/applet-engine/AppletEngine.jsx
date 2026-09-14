@@ -850,7 +850,6 @@ function constructAppletRuntime({
       if (cleanEntries === null) return
       cleanEntries = cleanEntries.map((entry) => entry.application.applicationId === applicationId
         ? cloneJson({ ...entry, appletState: state }, 'Clean Surface state') : entry)
-      notifyCheckpoint()
     },
   })
   appletState.subscribeCheckpoint(notifyCheckpoint)

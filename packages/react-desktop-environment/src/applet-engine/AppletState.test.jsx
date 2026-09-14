@@ -385,6 +385,71 @@ describe('Applet state', () => {
     expect(button.textContent).toBe('true')
     expect(store.snapshot(application.applicationId)).toEqual({ open: true })
   })
+
+  it('adopts replacement declarations without notifying a previous React consumer during render', async () => {
+    const store = createAppletStateStore({ applications: { notes: application } })
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    function Columns({ catalogue }) {
+      const [columns] = useAppletState(catalogue, 'columns', {
+        adopt: (value) => value.every((column) => catalogue.includes(column)) ? value : undefined,
+      })
+      return <output>{columns.join(',')}</output>
+    }
+    const scene = (catalogue) => (
+      <AppletStateStoreContext.Provider value={store}>
+        <AppletApplicationContext.Provider value={application}>
+          <Columns catalogue={catalogue} key={catalogue.join(',')} />
+        </AppletApplicationContext.Provider>
+      </AppletStateStoreContext.Provider>
+    )
+    const view = render(scene(['product']))
+    try {
+      view.rerender(scene(['mixed']))
+      expect(view.container.textContent).toBe('mixed')
+      expect(store.snapshot(application.applicationId)).toEqual({ columns: ['mixed'] })
+      await act(async () => {})
+      expect(errors.mock.calls.filter(([message]) => String(message).includes('Cannot update a component'))).toEqual([])
+    } finally {
+      view.unmount()
+      errors.mockRestore()
+    }
+  })
+
+  it('delivers adopted values to retained consumers when the declaring render suspends', async () => {
+    const store = createAppletStateStore({ applications: { notes: application } })
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const pending = new Promise(() => {})
+    const adopt = (value) => value.every((column) => column === 'mixed') ? value : undefined
+    function Observer() {
+      const [columns] = useAppletState(['product'], 'columns')
+      return <output>{columns.join(',')}</output>
+    }
+    function SuspendedDeclaration() {
+      useAppletState(['mixed'], 'columns', { adopt })
+      throw pending
+    }
+    const scene = (suspended) => (
+      <AppletStateStoreContext.Provider value={store}>
+        <AppletApplicationContext.Provider value={application}>
+          <Observer />
+          <React.Suspense fallback={<span>Suspended</span>}>
+            {suspended ? <SuspendedDeclaration /> : null}
+          </React.Suspense>
+        </AppletApplicationContext.Provider>
+      </AppletStateStoreContext.Provider>
+    )
+    const view = render(scene(false))
+    try {
+      await act(async () => { view.rerender(scene(true)) })
+      expect(view.container.querySelector('output').textContent).toBe('mixed')
+      expect(view.getByText('Suspended')).not.toBeNull()
+      expect(store.snapshot(application.applicationId)).toEqual({ columns: ['mixed'] })
+      expect(errors.mock.calls.filter(([message]) => String(message).includes('Cannot update a component'))).toEqual([])
+    } finally {
+      view.unmount()
+      errors.mockRestore()
+    }
+  })
 })
 
 describe.each(['standalone', 'runtime'])('%s owner recognition', (adapter) => {

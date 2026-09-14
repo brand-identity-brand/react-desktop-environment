@@ -12,7 +12,9 @@ import * as windowReact from 'react-desktop-environment/window-manager/react'
 import * as ui from 'react-desktop-environment/ui'
 import {
   AppletEngine,
+  AppletStateStoreContext,
   createAppletEngine,
+  createAppletStateStore,
   DEFAULT_APPLET_THEME,
   useAppletTheme,
 } from 'react-desktop-environment/applet-engine'
@@ -93,5 +95,32 @@ assert.equal((await recovery.flush()).ok, true)
 assert.equal((await recovery.dispose({ flush: true })).ok, true)
 await act(async () => { restoredRoot.unmount() })
 restored.compositor.destroy()
+
+const selectionStore = createAppletStateStore({ applications: { note: noteApplication } })
+function Selection({ catalogue }) {
+  const [columns] = AppletEngine.useState(catalogue, 'selectedColumns', {
+    adopt: (value) => value.every((column) => catalogue.includes(column)) ? value : undefined,
+  })
+  return h('output', null, columns.join(','))
+}
+const selection = (catalogue) => h(AppletStateStoreContext.Provider, { value: selectionStore },
+  h(AppletEngine.Application, { application: noteApplication },
+    h(Selection, { catalogue, key: catalogue.join(',') }),
+  ),
+)
+const selectionRoot = createRoot(document.getElementById('root'))
+const errors = []
+const originalError = console.error
+console.error = (...args) => errors.push(args)
+try {
+  await act(async () => { selectionRoot.render(selection(['product'])) })
+  await act(async () => { selectionRoot.render(selection(['mixed'])) })
+  assert.equal(document.querySelector('output').textContent, 'mixed')
+  assert.equal(JSON.stringify(selectionStore.snapshot(noteApplication.applicationId)), JSON.stringify({ selectedColumns: ['mixed'] }))
+  assert.deepEqual(errors, [])
+} finally {
+  await act(async () => { selectionRoot.unmount() })
+  console.error = originalError
+}
 dom.window.close()
-console.log('Packed ESM entries, independent Applet tree, shared React/context, identity, state, checkpoint restoration, and explicit recovery passed.')
+console.log('Packed ESM entries, independent Applet tree, shared React/context, identity, state, replacement adoption, checkpoint restoration, and explicit recovery passed.')

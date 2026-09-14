@@ -175,6 +175,10 @@ input may be durable when the owning operation requires them.
 canonical contexts across every binding. The state store API is available for
 runtime owners and tests; ordinary Applets declare named state through the hook.
 
+Hook declarations adopt live values and the clean baseline synchronously. Their
+subscriber notifications run after the current render stack, including when
+React abandons that render. Ordinary state writes still notify synchronously.
+
 ## Surface state and root checkpoints
 
 The complete checkpoint is one `surfaceState[]` array. Each entry carries its

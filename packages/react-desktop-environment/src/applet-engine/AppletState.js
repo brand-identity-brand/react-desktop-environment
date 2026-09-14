@@ -396,7 +396,7 @@ export function createAppletStateStore({
       }
       notifyCheckpoint()
     },
-    ensure({ applicationId, initialValue, persistent = true, stateName, adopt }) {
+    ensure({ applicationId, initialValue, persistent = true, stateName, adopt, deferNotifications = false }) {
       requireStateName(stateName)
       const record = requireRecord(applicationId)
       if (adopt !== undefined && typeof adopt !== 'function') {
@@ -471,8 +471,14 @@ export function createAppletStateStore({
         }
         record.cleanDeclarations.add(stateName)
       }
-      if (changed && previous) notify(applicationId, stateName)
-      if (persistent && (changed || cleanChanged)) notifyCheckpoint()
+      if ((changed && previous) || (persistent && (changed || cleanChanged))) {
+        const publish = () => {
+          if (changed && previous) notify(applicationId, stateName)
+          if (persistent && (changed || cleanChanged)) notifyCheckpoint()
+        }
+        if (deferNotifications) queueMicrotask(publish)
+        else publish()
+      }
       return record.values.get(stateName)
     },
     getSetter({ applicationId, stateName }) {
@@ -606,6 +612,9 @@ export function useAppletState(initialValue, stateName, options = {}) {
       persistent: options.persistent ?? true,
       stateName,
       adopt: options.adopt,
+      // Adoption is synchronous; subscribers must not update other React
+      // consumers during render. Delivery also survives an abandoned render.
+      deferNotifications: true,
     })
   }
 
