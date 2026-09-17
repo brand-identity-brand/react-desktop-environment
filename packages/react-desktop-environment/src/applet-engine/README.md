@@ -42,15 +42,18 @@ children of the exact supplied containers and returns registered contribution
 nodes. Discovery neither creates occurrences nor maintains another registry.
 
 `AppletEngine.create({ applet, desktopEnvironment, composition, options,
-rootApplet })` constructs a runtime. The environment supplies the public
+rootApplet, scheme })` constructs a runtime. The environment supplies the public
 window-manager and compositor factories and optional default Window material.
 The engine registers its `deck` definition alongside the supplied tree,
 creates permanent Applications and a root Window/Surface, and owns state,
 checkpoints, occurrence operations, and unreachable dynamic cleanup.
 
 The outermost React `AppletEngine` constructs and disposes its engine. A nested
-binding reuses that engine. An explicitly injected `engine` still receives
-root Application/state/composition contexts, but its injector owns disposal.
+binding reuses that engine. A supplied live `scheme` updates that same runtime.
+An explicitly injected `engine` receives its root Application/state/composition
+contexts, including when it differs from a surrounding runtime. Injecting the
+same surrounding engine preserves the current nested Application context.
+The injector owns disposal through `engine.destroy()`.
 `AppletEngine.useOwnership()` reports whether the current binding constructed
 its engine. `onEngine` receives the active instance. Reset replaces an owned
 runtime and its occurrences; it does not replace the surrounding host.
@@ -74,6 +77,7 @@ const composition = {
   Provider,
   Boundary,
   ThemeProvider,
+  defaultTheme,
   DeckSurface,
   rootDefaults: { Record, Tab },
 }
@@ -85,7 +89,10 @@ props. `Boundary` establishes a definition binder's recursive presentation
 boundary. Raw `AppletEngine` composition does not insert that definition
 boundary: an injected root can render its references through the root composer.
 `ThemeProvider` may compose additional consumer context around the exported
-generic theme provider; it must retain that canonical palette context.
+generic theme provider; it receives the exact resolved occurrence material and
+recorded `themeRoot`, and must retain that canonical theme context.
+`defaultTheme` supplies a complete consumer fallback declaration, resolved by
+the same scheme path for null and unavailable roots.
 `rootDefaults` supplies absent product material on a nonmutating adaptation of
 the requested RootApplet. Existing RootApplet material is retained. The package
 does not import domain definitions, data clients, visual assets, drag systems,
@@ -219,19 +226,53 @@ uses that same definition contract; container allocations remain separate.
 
 ## Themes
 
-The public theme API exports `createAppletTheme`, `AppletThemeProvider`,
-`useAppletTheme`, `useAppletThemeRoot`, `AppletThemeContext`,
-`AppletThemeRootContext`, and `DEFAULT_APPLET_THEME`. A complete theme supplies
-`backgroundColor`, `fontColor`, nullable `borderColor`, `highlightColor`, and
-`shadowColor`. Palette validation and context identity belong here.
+The public theme API exports `createAppletTheme`, `resolveAppletTheme`,
+`AppletThemeProvider`, `useAppletTheme`, `useAppletThemeRoot`,
+`AppletThemeContext`, `AppletThemeRootContext`, and `DEFAULT_APPLET_THEME`.
+A declaration supplies complete colour identity: `backgroundColor`, `fontColor`,
+nullable `borderColor`, `highlightColor`, and `shadowColor`. Consumer-owned
+material fields are retained as immutable plain objects, arrays, strings,
+booleans, finite numbers, or null. An optional `reconcile(identity, scheme)`
+resolves that declaration into complete material; `identity` excludes the
+reconciler and is immutable. The result carries the same five base colour fields
+and any consumer-defined roles. Reconciliation is pure and cannot return a
+second reconciler. The runtime validates declarations and resolved material.
 
 A definition declaring `meta.theme` establishes a theme root. Other occurrences
 inherit the root of the occurrence that instantiated them. Surface props record
 that root's full registry name; movement retains it. `runtime.themeFor(surface)`
-resolves its live registered theme. An unavailable root or explicit null uses
-the default theme; an older entry without the field uses its definition's
-nearest static root. Product palettes, font assets, CSS, and control-colour
-composition remain consumer-owned.
+selects this recorded origin and resolves its registered declaration with the
+live scheme. An unavailable root or explicit null resolves `composition.defaultTheme`,
+or the product-independent neutral fallback when none is supplied. An older
+entry without the field uses its definition's nearest static root.
+
+The constructor, React `AppletEngine`, and definition binder accept `scheme`.
+The key is a nonempty consumer-owned string; omission supplies `undefined` to
+the reconciler, which may define its default. `runtime.getScheme()` reads the
+selection, `runtime.setScheme(scheme)` changes it, and
+`runtime.subscribeTheme(listener)` observes changes independently of durable
+state. An outer React binding applies a supplied live scheme; nested bindings
+reuse its runtime and do not select a different scheme. An omitted React scheme
+leaves an injected runtime's existing selection intact. Repeating the selected
+key neither publishes nor recomputes material.
+
+Resolved material is cached per runtime, registered root, and scheme. Occurrences
+of one root share its exact object, while equal-valued roots and separate
+runtimes retain their own material identities. Returning to a previous scheme
+reuses its cached object. The public lookup and canonical context publish that
+same immutable result. Engine context observers re-render for live scheme changes
+while `AppletEngine.use()` and `useOptional()` retain the exact engine identity,
+including nested owners that resolve and publish their own occurrence material.
+`AppletThemeProvider` also resolves standalone declarations
+with its optional `scheme` and passes already resolved material unchanged.
+
+Scheme changes retain the engine, Applications, Surfaces, recorded roots, named
+state, complete checkpoints, and dirty status. `engine.destroy()` releases the
+runtime's theme subscriptions, cached material, and owned runtime subscriptions,
+then destroys its compositor. Owned React bindings perform this disposal on
+unmount; injected engines remain the injector's responsibility. Product scheme
+catalogues, palette meanings, font assets, CSS, and control-colour composition
+remain consumer-owned.
 
 ## Verification
 

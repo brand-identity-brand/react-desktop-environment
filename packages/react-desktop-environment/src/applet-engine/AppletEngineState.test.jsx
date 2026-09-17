@@ -42,6 +42,31 @@ function capture(engine) {
 }
 
 describe('AppletEngine Surface state checkpoint', () => {
+  it.each([false, true])('keeps complete checkpoints and dirty status unchanged by live scheme changes (dirty=%s)', async (dirty) => {
+    const engine = createEngine()
+    try {
+      if (dirty) engine.appletState.write({ applicationId: engine.rootApplicationId, stateName: 'value', value: 'edited' })
+      await Promise.resolve()
+      const snapshot = engine.checkpoint.getSnapshot()
+      const compositorSnapshot = engine.compositor.getSnapshot()
+      const checkpointListener = vi.fn()
+      const compositorListener = vi.fn()
+      engine.checkpoint.subscribe(checkpointListener)
+      engine.compositor.subscribe(compositorListener)
+      engine.runtime.setScheme('first')
+      engine.runtime.themeFor(null)
+      engine.runtime.setScheme('second')
+      await Promise.resolve()
+      expect(engine.checkpoint.getSnapshot()).toBe(snapshot)
+      expect(engine.compositor.getSnapshot()).toBe(compositorSnapshot)
+      expect(engine.checkpoint.isDirty()).toBe(dirty)
+      expect(checkpointListener).not.toHaveBeenCalled()
+      expect(compositorListener).not.toHaveBeenCalled()
+    } finally {
+      engine.destroy()
+    }
+  })
+
   it('captures synchronous adoption before deferred React declaration notifications', async () => {
     const engine = createEngine()
     const state = { applicationId: engine.rootApplicationId, stateName: 'columns' }
@@ -74,7 +99,11 @@ describe('AppletEngine Surface state checkpoint', () => {
     function Origin() {}
     Origin.meta = Object.freeze({
       applicationName: 'origin',
-      theme: Object.freeze({ ...DEFAULT_APPLET_THEME, backgroundColor: 'red' }),
+      theme: Object.freeze({
+        ...DEFAULT_APPLET_THEME,
+        backgroundColor: 'red',
+        reconcile: (identity, scheme) => ({ ...identity, canvasColor: scheme }),
+      }),
     })
     function Destination() {}
     Destination.meta = Object.freeze({
@@ -88,10 +117,11 @@ describe('AppletEngine Surface state checkpoint', () => {
       origin: Origin,
       destination: Destination,
     })
-    const create = (options = {}) => AppletEngine.create({
+    const create = (options = {}, scheme = 'day') => AppletEngine.create({
       applet: Root,
       desktopEnvironment,
       options,
+      scheme,
     })
     const source = create()
     let restored
@@ -112,11 +142,12 @@ describe('AppletEngine Surface state checkpoint', () => {
       expect(initialState.find(({ surfaceId }) => surfaceId === child.surfaceId).props.themeRoot)
         .toBe('root/origin')
 
-      restored = create({ initialState })
+      restored = create({ initialState }, 'night')
       const occurrence = restored.compositor.surface.read({ surfaceId: child.surfaceId })
       expect(occurrence.window.parentWindowId).toBe(destination.windowId)
       expect(occurrence.props.themeRoot).toBe('root/origin')
-      expect(restored.runtime.themeFor(occurrence)).toBe(Origin.meta.theme)
+      expect(restored.runtime.themeFor(occurrence)).toMatchObject({ backgroundColor: 'red', canvasColor: 'night' })
+      expect(source.runtime.themeFor(child)).toMatchObject({ backgroundColor: 'red', canvasColor: 'day' })
       expect(capture(restored)).toEqual(initialState)
     } finally {
       restored?.compositor.destroy()

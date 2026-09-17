@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { cleanup, render } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as compositor from '../compositor/index.js'
 import * as ui from '../ui/index.js'
 import * as windowManager from '../window-manager/index.js'
@@ -230,7 +230,7 @@ describe('AppletEngine definitions', () => {
 const residenceEngines = []
 afterEach(() => {
   cleanup()
-  residenceEngines.splice(0).forEach((engine) => engine.compositor.destroy())
+  residenceEngines.splice(0).forEach((engine) => engine.destroy())
 })
 
 function themeFixture() {
@@ -272,6 +272,67 @@ function themeFixture() {
 }
 
 describe('AppletEngine occurrence themes', () => {
+  it('caches consumer reconciliation by runtime, registered root and scheme', () => {
+    const reconcile = vi.fn((identity, scheme) => ({ ...identity, canvasColor: scheme === 'night' ? 'black' : 'white' }))
+    const theme = { ...DEFAULT_APPLET_THEME, backgroundColor: 'red', reconcile }
+    const Left = defineApplet('left', {}, { theme })
+    const Right = defineApplet('right', {}, { theme })
+    const Root = defineApplet('root', { left: Left, right: Right })
+    const create = () => AppletEngine.create({ applet: Root, desktopEnvironment, scheme: 'day', composition: { defaultTheme: theme } })
+    const engine = create()
+    const independent = create()
+    residenceEngines.push(engine, independent)
+    const occurrence = (themeRoot) => ({ props: { themeRoot } })
+    const left = occurrence('root/left')
+    const right = occurrence('root/right')
+    const first = engine.runtime.themeFor(left)
+    expect(engine.runtime.getScheme()).toBe('day')
+    expect(engine.runtime.themeFor(occurrence('root/left'))).toBe(first)
+    const second = engine.runtime.themeFor(right)
+    expect(second).toEqual(first)
+    expect(second).not.toBe(first)
+    expect(independent.runtime.themeFor(left)).not.toBe(first)
+    expect(reconcile).toHaveBeenCalledTimes(3)
+    const notify = vi.fn()
+    const unsubscribe = engine.runtime.subscribeTheme(notify)
+    engine.runtime.setScheme('day')
+    expect(notify).not.toHaveBeenCalled()
+    expect(reconcile).toHaveBeenCalledTimes(3)
+    engine.runtime.setScheme('night')
+    expect(notify).toHaveBeenCalledOnce()
+    expect(engine.runtime.themeFor(left).canvasColor).toBe('black')
+    expect(engine.runtime.themeFor(left)).not.toBe(first)
+    expect(independent.runtime.themeFor(left).canvasColor).toBe('white')
+    engine.runtime.setScheme('day')
+    expect(engine.runtime.themeFor(left)).toBe(first)
+    expect(reconcile).toHaveBeenCalledTimes(4)
+    const fallback = engine.runtime.themeFor(occurrence(null))
+    expect(engine.runtime.themeFor(occurrence('missing'))).toBe(fallback)
+    expect(fallback.canvasColor).toBe('white')
+    expect(fallback).not.toBe(first)
+    expect(engine.runtime.themeFor(null)).toBe(fallback)
+    unsubscribe()
+    engine.runtime.setScheme('night')
+    expect(notify).toHaveBeenCalledTimes(2)
+    engine.destroy()
+    engine.destroy()
+    expect(() => engine.runtime.themeFor(left)).toThrow('destroyed')
+    expect(() => engine.runtime.setScheme('day')).toThrow('destroyed')
+    expect(() => engine.runtime.subscribeTheme(notify)).toThrow('destroyed')
+  })
+
+  it('validates scheme and theme declarations at the runtime boundary', () => {
+    const Root = defineApplet('root')
+    expect(() => AppletEngine.create({ applet: Root, desktopEnvironment, scheme: '' })).toThrow('scheme')
+    const Invalid = defineApplet('invalid', {}, { theme: { backgroundColor: 'red' } })
+    expect(() => AppletEngine.create({ applet: Invalid, desktopEnvironment })).toThrow('missing')
+    const engine = AppletEngine.create({ applet: Root, desktopEnvironment })
+    residenceEngines.push(engine)
+    expect(() => engine.runtime.setScheme(2)).toThrow('scheme')
+    expect(engine.runtime.getScheme()).toBeUndefined()
+    expect(() => engine.runtime.subscribeTheme(null)).toThrow('listener')
+  })
+
   it('provides the root occurrence theme and registry name through root composition', () => {
     const { engine } = themeFixture()
     function Probe() {
@@ -325,19 +386,19 @@ describe('AppletEngine occurrence themes', () => {
     const next = open('root/right/shared', moved.surfaceId)
 
     expect(inherited.props.themeRoot).toBe('root/right')
-    expect(engine.runtime.themeFor(inherited)).toBe(Right.meta.theme)
+    expect(engine.runtime.themeFor(inherited)).toEqual(Right.meta.theme)
     expect(moved.props.themeRoot).toBe('root/right')
     expect(invoked.props.themeRoot).toBe('root/left')
-    expect(engine.runtime.themeFor(invoked)).toBe(Left.meta.theme)
+    expect(engine.runtime.themeFor(invoked)).toEqual(Left.meta.theme)
     expect(next.props.themeRoot).toBe('root/right')
-    expect(engine.runtime.themeFor(next)).toBe(Right.meta.theme)
+    expect(engine.runtime.themeFor(next)).toEqual(Right.meta.theme)
   })
 
   it('uses a theme-declaring target root even when another root invokes it', () => {
     const { engine, right, open, Own } = themeFixture()
     const occurrence = open('root/left/own', right.surfaceId, { themeRoot: 'root/right' })
     expect(occurrence.props.themeRoot).toBe('root/left/own')
-    expect(engine.runtime.themeFor(occurrence)).toBe(Own.meta.theme)
+    expect(engine.runtime.themeFor(occurrence)).toEqual(Own.meta.theme)
   })
 
   it('resolves recorded roots and preserves explicit default and unknown roots', () => {
@@ -349,9 +410,9 @@ describe('AppletEngine occurrence themes', () => {
     engine.compositor.surface.update({ surfaceId: surface.surfaceId, props: {} })
     const inheritedLegacy = open('root/right/shared', surface.surfaceId)
 
-    expect(engine.runtime.themeFor(legacy)).toBe(Left.meta.theme)
-    expect(engine.runtime.themeFor(unknown)).toBe(DEFAULT_APPLET_THEME)
-    expect(engine.runtime.themeFor(defaulted)).toBe(DEFAULT_APPLET_THEME)
+    expect(engine.runtime.themeFor(legacy)).toEqual(Left.meta.theme)
+    expect(engine.runtime.themeFor(unknown)).toEqual(DEFAULT_APPLET_THEME)
+    expect(engine.runtime.themeFor(defaulted)).toEqual(DEFAULT_APPLET_THEME)
     expect(open('root/right/shared', unknown.surfaceId).props.themeRoot)
       .toBe('removed/workspace')
     expect(open('root/right/shared', defaulted.surfaceId).props.themeRoot).toBeNull()

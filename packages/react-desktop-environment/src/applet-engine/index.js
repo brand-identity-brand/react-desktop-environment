@@ -19,6 +19,7 @@ export {
   AppletThemeProvider,
   DEFAULT_APPLET_THEME,
   createAppletTheme,
+  resolveAppletTheme,
   useAppletTheme,
   useAppletThemeRoot,
 } from './AppletTheme.jsx'

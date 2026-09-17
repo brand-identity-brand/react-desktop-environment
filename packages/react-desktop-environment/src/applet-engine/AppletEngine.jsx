@@ -3,8 +3,10 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react'
 import AppletEnvironment from './AppletEnvironment.jsx'
 import Deck from './Deck.jsx'
@@ -19,6 +21,9 @@ import {
 import {
   AppletThemeProvider,
   DEFAULT_APPLET_THEME,
+  createAppletTheme,
+  resolveAppletTheme,
+  validateAppletScheme,
 } from './AppletTheme.jsx'
 import presentedSurface from './presentedSurface.js'
 
@@ -388,14 +393,16 @@ function PassThrough({ children }) {
 }
 
 function ReferenceSurface({ children, surface }) {
-  const engine = useContext(AppletEngineContext)
+  const engine = useContext(AppletEngineContext)?.engine ?? null
+  useSyncExternalStore(engine.runtime.subscribeTheme, engine.runtime.getScheme, engine.runtime.getScheme)
+  const ThemeProvider = engine.composition.ThemeProvider ?? AppletThemeProvider
   const themeRoot = surface.props?.themeRoot !== undefined
     ? surface.props.themeRoot
     : engine.runtime.resolveApplicationNode(surface.application)?.themeRoot ?? null
   return (
-    <AppletThemeProvider theme={engine.runtime.themeFor(surface)} themeRoot={themeRoot}>
+    <ThemeProvider theme={engine.runtime.themeFor(surface)} themeRoot={themeRoot}>
       {children}
-    </AppletThemeProvider>
+    </ThemeProvider>
   )
 }
 
@@ -414,6 +421,7 @@ function constructAppletRuntime({
   options = {},
   resetRootApplet,
   rootApplet,
+  scheme,
 }) {
   const createWindowManager = desktopEnvironment?.windowManager
     ?.createWindowManager
@@ -440,6 +448,17 @@ function constructAppletRuntime({
     )
   }
   const applicationRegistry = collectApplicationRegistry(applet)
+  let selectedScheme = validateAppletScheme(scheme)
+  let destroyed = false
+  const themeListeners = new Set()
+  const themeCache = new Map()
+  const themeDeclarations = new Map(Object.values(applicationRegistry)
+    .filter(({ Applet }) => Object.hasOwn(Applet.meta, 'theme'))
+    .map(({ applicationName, Applet }) => [applicationName, createAppletTheme(Applet.meta.theme)]))
+  themeDeclarations.set(null, createAppletTheme(composition.defaultTheme ?? DEFAULT_APPLET_THEME))
+  const requireLiveTheme = () => {
+    if (destroyed) throw new Error('Applet runtime has been destroyed')
+  }
   const hasCheckpoint = (value) => value != null
     && (!Array.isArray(value) || value.length > 0)
   const readSurfaceStateOption = (surfaceState) => hasCheckpoint(surfaceState)
@@ -852,7 +871,7 @@ function constructAppletRuntime({
         ? cloneJson({ ...entry, appletState: state }, 'Clean Surface state') : entry)
     },
   })
-  appletState.subscribeCheckpoint(notifyCheckpoint)
+  const unsubscribeAppletState = appletState.subscribeCheckpoint(notifyCheckpoint)
   const permanentApplicationIds = new Set(
     Object.values(applicationInstances).map(({ applicationId }) => applicationId),
   )
@@ -1252,9 +1271,37 @@ function constructAppletRuntime({
       }
     },
     resolveApplicationNode,
+    getScheme() {
+      return selectedScheme
+    },
+    setScheme(nextScheme) {
+      requireLiveTheme()
+      validateAppletScheme(nextScheme)
+      if (nextScheme === selectedScheme) return
+      selectedScheme = nextScheme
+      themeListeners.forEach((listener) => listener())
+    },
+    subscribeTheme(listener) {
+      requireLiveTheme()
+      if (typeof listener !== 'function') throw new TypeError('Applet theme listener must be a function')
+      themeListeners.add(listener)
+      return () => themeListeners.delete(listener)
+    },
     themeFor(surface) {
-      return applicationRegistry[surfaceThemeRoot(surface)]?.Applet.meta.theme
-        ?? DEFAULT_APPLET_THEME
+      requireLiveTheme()
+      const recordedRoot = surfaceThemeRoot(surface)
+      const root = themeDeclarations.has(recordedRoot) ? recordedRoot : null
+      let schemes = themeCache.get(root)
+      if (!schemes) {
+        schemes = new Map()
+        themeCache.set(root, schemes)
+      }
+      if (!schemes.has(selectedScheme)) {
+        schemes.set(selectedScheme, createAppletTheme({
+          ...resolveAppletTheme(themeDeclarations.get(root), selectedScheme),
+        }))
+      }
+      return schemes.get(selectedScheme)
     },
 
   })
@@ -1474,6 +1521,7 @@ function constructAppletRuntime({
         desktopEnvironment,
         options: cleanOptions,
         rootApplet,
+        scheme,
         adoption: {
           createId: suppliedCreateId,
           defaultIds,
@@ -1568,7 +1616,7 @@ function constructAppletRuntime({
       surface.selectedChildSurfaceId,
     ]),
   )
-  compositor.subscribe(() => {
+  const unsubscribeCompositor = compositor.subscribe(() => {
     const surfaces = Object.values(compositor.getSnapshot().surfaces)
     const surfaceIds = new Set(surfaces.map(({ surfaceId }) => surfaceId))
     for (const [key, declaration] of fieldSupplies) {
@@ -1639,6 +1687,17 @@ function constructAppletRuntime({
   })
 
   return Object.freeze({
+    destroy() {
+      if (destroyed) return
+      destroyed = true
+      unsubscribeCompositor()
+      unsubscribeAppletState()
+      themeListeners.clear()
+      themeCache.clear()
+      themeDeclarations.clear()
+      checkpointListeners.clear()
+      compositor.destroy()
+    },
     appletState,
     composition,
     applicationInstances,
@@ -1656,8 +1715,8 @@ function constructAppletRuntime({
   })
 }
 
-function createAppletEngine({ applet, composition, desktopEnvironment, options, resetRootApplet, rootApplet }) {
-  return constructAppletRuntime({ applet, composition, desktopEnvironment, options, resetRootApplet, rootApplet })
+function createAppletEngine({ applet, composition, desktopEnvironment, options, resetRootApplet, rootApplet, scheme }) {
+  return constructAppletRuntime({ applet, composition, desktopEnvironment, options, resetRootApplet, rootApplet, scheme })
 }
 
 function AppletEngineRuntime({
@@ -1670,11 +1729,12 @@ function AppletEngineRuntime({
   onEngine,
   options,
   resetRootApplet,
+  scheme,
 }) {
-  const inheritedEngine = useContext(AppletEngineContext)
+  const inheritedEngine = useContext(AppletEngineContext)?.engine ?? null
   const desktopEnvironment = AppletEnvironment.use()
   const ownsEngine = !engine && !inheritedEngine
-  const hostsRuntime = !inheritedEngine
+  const hostsRuntime = !inheritedEngine || Boolean(engine && engine !== inheritedEngine)
   const [ownedEngine] = useState(() => ownsEngine
     ? createAppletEngine({
         applet,
@@ -1683,6 +1743,7 @@ function AppletEngineRuntime({
         options,
         resetRootApplet,
         rootApplet: RootApplet,
+        scheme,
       })
     : null)
   const resolvedEngine = engine ?? inheritedEngine ?? ownedEngine
@@ -1692,6 +1753,18 @@ function AppletEngineRuntime({
   if (!resolvedEngine) {
     throw new TypeError('AppletEngine requires an engine')
   }
+  const selectedScheme = useSyncExternalStore(
+    resolvedEngine.runtime.subscribeTheme,
+    resolvedEngine.runtime.getScheme,
+    resolvedEngine.runtime.getScheme,
+  )
+  const engineContext = useMemo(() => ({
+    engine: resolvedEngine,
+    scheme: selectedScheme,
+  }), [resolvedEngine, selectedScheme])
+  useEffect(() => {
+    if (hostsRuntime && scheme !== undefined) resolvedEngine.runtime.setScheme(scheme)
+  }, [hostsRuntime, resolvedEngine, scheme])
   const rootSurface = resolvedEngine.compositor.surface.read({
     surfaceId: resolvedEngine.rootSurfaceId,
   })
@@ -1714,7 +1787,7 @@ function AppletEngineRuntime({
           && !destroyedEngine.current
         ) {
           destroyedEngine.current = true
-          resolvedEngine.compositor.destroy?.()
+          resolvedEngine.destroy()
         }
       })
     }
@@ -1749,7 +1822,7 @@ function AppletEngineRuntime({
     : children
 
   return (
-    <AppletEngineContext.Provider value={resolvedEngine}>
+    <AppletEngineContext.Provider value={engineContext}>
       <AppletEngineOwnershipContext.Provider value={ownsEngine}>
         <Provider {...dnd}>
           {content}
@@ -1810,7 +1883,7 @@ function OwnedAppletEngine({ options, ...props }) {
 }
 
 export default function AppletEngine(props) {
-  const inheritedEngine = useContext(AppletEngineContext)
+  const inheritedEngine = useContext(AppletEngineContext)?.engine ?? null
   return props.engine || inheritedEngine
     ? <AppletEngineRuntime {...props} />
     : <OwnedAppletEngine {...props} />
@@ -1831,19 +1904,19 @@ AppletEngine.Application = function AppletEngineApplication({
   )
 }
 AppletEngine.use = function useAppletEngine() {
-  const engine = useContext(AppletEngineContext)
+  const engine = useContext(AppletEngineContext)?.engine ?? null
   if (!engine) throw new Error('AppletEngine.use must be called inside an Applet')
   return engine
 }
 AppletEngine.useOptional = function useOptionalAppletEngine() {
-  return useContext(AppletEngineContext)
+  return useContext(AppletEngineContext)?.engine ?? null
 }
 AppletEngine.useRootApplet = function useRootApplet(
   suppliedRootApplet,
   fallbackApplet,
   defaults,
 ) {
-  const engine = useContext(AppletEngineContext)
+  const engine = useContext(AppletEngineContext)?.engine ?? null
   return resolveRootApplet(
     suppliedRootApplet ?? engine?.rootApplet,
     fallbackApplet,

@@ -16,6 +16,7 @@ import {
   createAppletEngine,
   createAppletStateStore,
   DEFAULT_APPLET_THEME,
+  resolveAppletTheme,
   useAppletTheme,
 } from 'react-desktop-environment/applet-engine'
 import { createAppletPersistence, resolveInitialAppletCheckpoint } from 'react-desktop-environment/applet-persistence'
@@ -49,7 +50,11 @@ Note.applets = Object.freeze({})
 function Notebook() { return null }
 Notebook.meta = Object.freeze({
   applicationName: 'notebook',
-  theme: Object.freeze({ ...DEFAULT_APPLET_THEME, backgroundColor: 'navy' }),
+  theme: Object.freeze({
+    ...DEFAULT_APPLET_THEME,
+    backgroundColor: 'navy',
+    reconcile: (identity, scheme) => ({ ...identity, canvasColor: scheme === 'night' ? 'black' : 'white' }),
+  }),
 })
 Notebook.applets = Object.freeze({ note: Note })
 Notebook.recipes = Object.freeze([Object.freeze({ name: 'notes', addable: true, residents: [{ applet: 'note' }] })])
@@ -58,7 +63,7 @@ const BoundEngine = createAppletEngine(Notebook)
 assert.equal(BoundEngine.Runtime, AppletEngine)
 const root = createRoot(document.getElementById('root'))
 await act(async () => {
-  root.render(h(BoundEngine, { onEngine: (engine) => { currentEngine = engine } }))
+  root.render(h(BoundEngine, { scheme: 'day', onEngine: (engine) => { currentEngine = engine } }))
 })
 assert.equal(document.querySelector('output').textContent, 'original')
 assert.equal(observedTheme.backgroundColor, 'navy')
@@ -66,6 +71,26 @@ const originalEngine = currentEngine
 const originalApplicationId = noteApplication.applicationId
 const originalSurface = Object.values(currentEngine.compositor.getSnapshot().surfaces)
   .find(({ applicationId }) => applicationId === originalApplicationId)
+assert.equal(observedTheme, currentEngine.runtime.themeFor(originalSurface))
+assert.equal(observedTheme.canvasColor, 'white')
+assert.equal(resolveAppletTheme(observedTheme), observedTheme)
+const initialCheckpoint = currentEngine.checkpoint.getSnapshot()
+const initialDirty = currentEngine.checkpoint.isDirty()
+let themeChanges = 0
+const unsubscribeTheme = currentEngine.runtime.subscribeTheme(() => { themeChanges += 1 })
+await act(async () => {
+  root.render(h(BoundEngine, { scheme: 'night', onEngine: (engine) => { currentEngine = engine } }))
+})
+assert.equal(currentEngine, originalEngine)
+assert.equal(currentEngine.runtime.getScheme(), 'night')
+assert.equal(observedTheme, currentEngine.runtime.themeFor(originalSurface))
+assert.equal(observedTheme.canvasColor, 'black')
+assert.equal(currentEngine.checkpoint.getSnapshot(), initialCheckpoint)
+assert.equal(currentEngine.checkpoint.isDirty(), initialDirty)
+assert.equal(themeChanges, 1)
+currentEngine.runtime.setScheme('night')
+assert.equal(themeChanges, 1)
+unsubscribeTheme()
 const [deck] = currentEngine.compositor.surface.readChildren({ surfaceId: currentEngine.rootSurfaceId })
 assert.equal(deck.props.addable, true)
 await act(async () => { edit('retained') })
@@ -107,7 +132,7 @@ assert.equal(JSON.stringify(adopted.snapshot.find(({ application }) => applicati
 assert.equal(restored.checkpoint.isDirty(), false)
 restored.checkpoint.release(adopted)
 await act(async () => { restoredRoot.unmount() })
-restored.compositor.destroy()
+restored.destroy()
 
 const selectionStore = createAppletStateStore({ applications: { note: noteApplication } })
 function Selection({ catalogue }) {
@@ -136,4 +161,4 @@ try {
   console.error = originalError
 }
 dom.window.close()
-console.log('Packed ESM entries, independent Applet tree, shared React/context, identity, state, replacement adoption, checkpoint restoration, and explicit recovery passed.')
+console.log('Packed ESM entries, independent Applet tree, shared React/context, identity, state, replacement adoption, checkpoint restoration, live consumer scheme material, and explicit recovery passed.')
