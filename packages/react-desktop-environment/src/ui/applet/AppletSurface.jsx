@@ -1,9 +1,48 @@
-import React, { createContext, useCallback, useContext, useRef, useState, useSyncExternalStore } from 'react'
+import createAppletThemes, { resolveAppletThemeRoot } from './createAppletThemes.js'
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import AppletEngine from '../../applet-engine/AppletEngine.jsx'
-import { AppletThemeProvider } from '../../applet-engine/AppletTheme.jsx'
+import { AppletThemeProvider } from './AppletTheme.jsx'
+import Deck, { useDeckComposition } from '../../applet-engine/Deck.jsx'
+import { AppletApplicationContext } from '../../applet-engine/AppletState.js'
 import useChildSurfaceComposition from '../../applet-engine/useChildSurfaceComposition.js'
 import { constrainPresentationSize, minimumPresentationSize } from '../../applet-engine/presentationSize.js'
 import Window from '../Window.jsx'
+
+const ThemeLookupContext = createContext(null)
+
+function surfaceThemeRoot(engine, surface) {
+  return surface.props?.themeRoot === undefined
+    ? resolveAppletThemeRoot(engine.applicationRegistry, surface.application?.applicationName)
+    : surface.props.themeRoot
+}
+
+function useSurfaceTheme(engine, surface) {
+  const lookup = useContext(ThemeLookupContext)
+  const fallback = useMemo(() => createAppletThemes(engine), [engine])
+  return lookup?.engine === engine ? lookup.resolve(surface, lookup.scheme) : fallback(surface)
+}
+
+function PresentedDeck({ drawSurface, ...props }) {
+  const engine = AppletEngine.use()
+  const model = useDeckComposition({ engine, surface: props.surface })
+  return <>
+    <DeckSurface {...props} {...model} engine={engine} />
+    <StockChildren surfaceId={props.surface.surfaceId} drawSurface={drawSurface} />
+  </>
+}
+
+function StockChildren({ surfaceId, drawSurface }) {
+  const engine = AppletEngine.use()
+  const SurfaceComposer = engine.desktopEnvironment.compositor.SurfaceComposer
+  return <SurfaceComposer compositor={engine.compositor} surfaceId={surfaceId} recursive={false}
+    applicationContext={AppletApplicationContext} renderSurface={drawSurface}
+    renderApplication={(Applet, props) => Applet === Deck
+      ? <PresentedDeck {...props} drawSurface={drawSurface} /> : <Applet {...props} />} />
+}
+
+function renderSurface(props) {
+  return <AppletSurface {...props} />
+}
 
 const HostContext = createContext(null)
 const toolbarStyle = { display: 'flex', alignItems: 'center', gap: 4, minHeight: 32 }
@@ -54,7 +93,7 @@ function SurfaceHost({ engine, surface: suppliedSurface, children, root = false,
     (insideDeck || surface.fullscreen)
     && selected?.surfaceId !== surface.surfaceId
   )
-  const theme = engine.runtime.themeFor(surface)
+  const theme = useSurfaceTheme(engine, surface)
   const host = { engine, surface, body }
   const fill = root || insideDeck || surface.fullscreen
   const title = titleFor(engine, surface)
@@ -182,20 +221,30 @@ function SurfaceHost({ engine, surface: suppliedSurface, children, root = false,
 
 export default function AppletSurface({ surface, children, style }) {
   const engine = AppletEngine.use()
-  const ThemeProvider = engine.composition.ThemeProvider ?? AppletThemeProvider
   return (
-    <ThemeProvider theme={engine.runtime.themeFor(surface)} themeRoot={surface.props?.themeRoot}>
+    <AppletThemeProvider theme={useSurfaceTheme(engine, surface)} themeRoot={surfaceThemeRoot(engine, surface)}>
       <SurfaceHost engine={engine} surface={surface} style={style}>{children}</SurfaceHost>
-    </ThemeProvider>
+    </AppletThemeProvider>
   )
 }
 
-export function AppletPresentation({ children }) {
+export function AppletPresentation({ children, surface: suppliedSurface, scheme, renderSurface: drawSurface = renderSurface }) {
   const engine = AppletEngine.use()
   const inherited = useContext(HostContext)
-  if (inherited?.engine === engine) return children
-  const root = engine.compositor.surface.read({ surfaceId: engine.rootSurfaceId })
-  return <SurfaceHost engine={engine} surface={root} root>{children}</SurfaceHost>
+  const resolve = useMemo(() => createAppletThemes(engine), [engine])
+  const themes = useMemo(() => ({ engine, resolve, scheme }), [engine, resolve, scheme])
+  const root = suppliedSurface ?? engine.compositor.surface.read({ surfaceId: engine.rootSurfaceId })
+  const material = resolve(root, scheme)
+  const content = <>
+    {children}
+    <StockChildren surfaceId={root.surfaceId} drawSurface={drawSurface} />
+  </>
+  const framed = inherited?.engine === engine && inherited.surface.surfaceId === root.surfaceId
+  return <ThemeLookupContext.Provider value={themes}>
+    <AppletThemeProvider theme={material} themeRoot={surfaceThemeRoot(engine, root)}>
+      {framed ? content : <SurfaceHost engine={engine} surface={root} root>{content}</SurfaceHost>}
+    </AppletThemeProvider>
+  </ThemeLookupContext.Provider>
 }
 
 export function DeckSurface({ engine, surface, composition, menuOpen, onMenuOpenChange }) {

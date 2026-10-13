@@ -5,7 +5,7 @@ import * as compositor from '../compositor/index.js'
 import * as ui from '../ui/index.js'
 import * as windowManager from '../window-manager/index.js'
 import AppletEngine from './AppletEngine.jsx'
-import { DEFAULT_APPLET_THEME } from './AppletTheme.jsx'
+import { DEFAULT_APPLET_THEME } from '../ui/applet/AppletTheme.jsx'
 
 const desktopEnvironment = Object.freeze({ compositor, ui, windowManager })
 
@@ -42,30 +42,44 @@ function capture(engine) {
 }
 
 describe('AppletEngine Surface state checkpoint', () => {
-  it.each([false, true])('keeps complete checkpoints and dirty status unchanged by live scheme changes (dirty=%s)', async (dirty) => {
+  it.each(['display.mode', 'display:mode', ''])('supplies literal prop key %j consistently in live state and the clean baseline', key => {
     const engine = createEngine()
+    const surfaceId = engine.rootSurfaceId
+    const supply = { surfaceId }
     try {
-      if (dirty) engine.appletState.write({ applicationId: engine.rootApplicationId, stateName: 'value', value: 'edited' })
-      await Promise.resolve()
-      const snapshot = engine.checkpoint.getSnapshot()
-      const compositorSnapshot = engine.compositor.getSnapshot()
-      const checkpointListener = vi.fn()
-      const compositorListener = vi.fn()
-      engine.checkpoint.subscribe(checkpointListener)
-      engine.compositor.subscribe(compositorListener)
-      engine.runtime.setScheme('first')
-      engine.runtime.themeFor(null)
-      engine.runtime.setScheme('second')
-      await Promise.resolve()
-      expect(engine.checkpoint.getSnapshot()).toBe(snapshot)
-      expect(engine.compositor.getSnapshot()).toBe(compositorSnapshot)
-      expect(engine.checkpoint.isDirty()).toBe(dirty)
-      expect(checkpointListener).not.toHaveBeenCalled()
-      expect(compositorListener).not.toHaveBeenCalled()
-    } finally {
-      engine.destroy()
-    }
+      engine.runtime.writeSurfaceProps({ surfaceId, props: { [key]: 'day', display: { mode: 'separate' } }, supply })
+      engine.runtime.writeSurfaceProps({ surfaceId, props: { [key]: 'night' }, supply })
+      expect(engine.compositor.surface.read({ surfaceId }).props).toMatchObject({ [key]: 'night', display: { mode: 'separate' } })
+      expect(engine.checkpoint.isDirty()).toBe(false)
+      engine.runtime.writeSurfaceProps({ surfaceId, props: { [key]: 'edited' } })
+      engine.runtime.writeSurfaceProps({ surfaceId, props: { [key]: 'ignored' }, supply })
+      expect(engine.compositor.surface.read({ surfaceId }).props[key]).toBe('edited')
+      expect(engine.checkpoint.isDirty()).toBe(true)
+      engine.runtime.writeSurfaceProps({ surfaceId, props: { [key]: 'night' } })
+      expect(engine.checkpoint.isDirty()).toBe(false)
+    } finally { engine.destroy() }
   })
+  it.each(['second', null])('supplies GUI-owned props without absorbing ordinary %s edits into the clean baseline', ordinaryValue => {
+    const engine = createEngine()
+    const surfaceId = engine.rootSurfaceId
+    const supply = { surfaceId }
+    try {
+      engine.runtime.writeSurfaceProps({ surfaceId, props: { colourOrigin: 'first' }, supply })
+      expect(engine.checkpoint.isDirty()).toBe(false)
+      engine.runtime.writeSurfaceProps({ surfaceId, props: { colourOrigin: ordinaryValue } })
+      expect(engine.checkpoint.isDirty()).toBe(true)
+      engine.runtime.writeSurfaceProps({ surfaceId, props: { colourOrigin: 'third', caption: 'supplied' }, supply })
+      expect(engine.compositor.surface.read({ surfaceId }).props).toMatchObject({ colourOrigin: ordinaryValue, caption: 'supplied' })
+      engine.runtime.writeSurfaceProps({ surfaceId, props: { colourOrigin: 'first' } })
+      expect(engine.checkpoint.isDirty()).toBe(false)
+      const snapshot = capture(engine)
+      const restored = createEngine({ initialState: snapshot, cleanState: snapshot })
+      expect(restored.compositor.surface.read({ surfaceId }).props).toMatchObject({ colourOrigin: 'first', caption: 'supplied' })
+      expect(restored.checkpoint.isDirty()).toBe(false)
+      restored.destroy()
+    } finally { engine.destroy() }
+  })
+
 
   it('captures synchronous adoption before deferred React declaration notifications', async () => {
     const engine = createEngine()
@@ -136,6 +150,7 @@ describe('AppletEngine Surface state checkpoint', () => {
       const origin = open('root/origin', source.rootSurfaceId)
       const destination = open('root/destination', source.rootSurfaceId)
       const child = open('root/child', origin.surfaceId)
+      source.runtime.writeSurfaceProps({ surfaceId: child.surfaceId, props: { themeRoot: 'root/origin' } })
       source.compositor.surface.readControls({ surfaceId: child.surfaceId })
         .reparent(destination.surfaceId)
       const initialState = capture(source)
@@ -146,8 +161,6 @@ describe('AppletEngine Surface state checkpoint', () => {
       const occurrence = restored.compositor.surface.read({ surfaceId: child.surfaceId })
       expect(occurrence.window.parentWindowId).toBe(destination.windowId)
       expect(occurrence.props.themeRoot).toBe('root/origin')
-      expect(restored.runtime.themeFor(occurrence)).toMatchObject({ backgroundColor: 'red', canvasColor: 'night' })
-      expect(source.runtime.themeFor(child)).toMatchObject({ backgroundColor: 'red', canvasColor: 'day' })
       expect(capture(restored)).toEqual(initialState)
     } finally {
       restored?.compositor.destroy()

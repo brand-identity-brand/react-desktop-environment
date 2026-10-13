@@ -130,11 +130,8 @@ export default function createSurfaceTransfer({ compositor, runtime, retainDeck,
         const application = runtime.createApplicationInstance({
           applicationId: deckApplicationId, transient: true,
         })
-        const themeRoot = original?.props.themeRoot !== undefined
-          ? original.props.themeRoot
-          : original && runtime.resolveApplicationNode(original.application)?.themeRoot
         const deck = runtime.createReferenceSurface({
-          applicationId: application.applicationId, ownerSurfaceId, themeRoot,
+          applicationId: application.applicationId, ownerSurfaceId,
           surfaceProps: { peelProvisional: true },
         })
         provisionalDeckId = deck.surfaceId

@@ -28,6 +28,9 @@ const SurfaceComposer = memo(function SurfaceComposerComponent({
   compositor: suppliedCompositor,
   surfaceId,
   children,
+  renderSurface,
+  renderApplication,
+  recursive = true,
 }) {
   const compositor = requireCompositor(suppliedCompositor)
   const readChildren = useCallback(
@@ -55,43 +58,28 @@ const SurfaceComposer = memo(function SurfaceComposerComponent({
           surfaceId: surface.surfaceId,
         })
         const ApplicationContext = applicationContext
-        const applicationElement = (
+        const applicationProps = { ...surface.application.props, controls, surface, window: surface.window, application: surface.application }
+        const applicationElement = renderApplication ? renderApplication(ApplicationComponent, applicationProps) : (
           <ApplicationComponent
             {...surface.application.props}
-            key={surface.applicationId}
             controls={controls}
             surface={surface}
             window={surface.window}
             application={surface.application}
           />
         )
-        return (
-          <SurfaceComponent
-            {...surface.props}
-            key={surface.surfaceId}
-            surface={surface}
-            window={surface.window}
-            application={surface.application}
-            hidden={surface.hidden}
-            controls={controls}
-          >
-            {ApplicationContext
-              ? (
-                  <ApplicationContext.Provider
-                    value={surface.application}
-                  >
-                    {applicationElement}
-                  </ApplicationContext.Provider>
-                )
-              : applicationElement}
-
-            <SurfaceComposer
-              applicationContext={applicationContext}
-              compositor={compositor}
-              surfaceId={surface.surfaceId}
-            />
-          </SurfaceComponent>
-        )
+        const content = <>
+          {ApplicationContext
+            ? <ApplicationContext.Provider key={surface.applicationId} value={surface.application}>{applicationElement}</ApplicationContext.Provider>
+            : <React.Fragment key={surface.applicationId}>{applicationElement}</React.Fragment>}
+          {recursive && <SurfaceComposer applicationContext={applicationContext} compositor={compositor}
+            surfaceId={surface.surfaceId} renderSurface={renderSurface} renderApplication={renderApplication} />}
+        </>
+        const props = { ...surface.props, surface, window: surface.window, application: surface.application,
+          hidden: surface.hidden, controls, children: content }
+        return <React.Fragment key={surface.surfaceId}>
+          {renderSurface ? renderSurface(props) : <SurfaceComponent {...props} />}
+        </React.Fragment>
       })}
     </>
   )

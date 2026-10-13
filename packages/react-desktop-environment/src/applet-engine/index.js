@@ -1,4 +1,4 @@
-export const ABSTRACTION = 'Recursive Applet definitions become a shared runtime of Applications, Windows, Surfaces, occurrence state, resident Decks, and complete checkpoints. Product material is supplied by composition.'
+export const ABSTRACTION = 'Recursive Applet definitions become a shared runtime of Applications, Windows, Surfaces, occurrence state, resident Decks, and complete checkpoints.'
 
 export { default as AppletEngine } from './AppletEngine.jsx'
 export { default as AppletEnvironment } from './AppletEnvironment.jsx'
@@ -13,16 +13,6 @@ export {
   useAppletState,
   validateSurfaceState,
 } from './AppletState.js'
-export {
-  AppletThemeContext,
-  AppletThemeRootContext,
-  AppletThemeProvider,
-  DEFAULT_APPLET_THEME,
-  createAppletTheme,
-  resolveAppletTheme,
-  useAppletTheme,
-  useAppletThemeRoot,
-} from './AppletTheme.jsx'
 
 export { useWhichApplet } from './AppletEngine.jsx'
 export { resolveDeckProps } from './deckProps.js'

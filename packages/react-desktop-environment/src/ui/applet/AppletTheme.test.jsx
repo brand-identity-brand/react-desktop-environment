@@ -3,14 +3,7 @@
 import React from 'react'
 import { render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import {
-  AppletThemeProvider,
-  createAppletTheme,
-  DEFAULT_APPLET_THEME,
-  resolveAppletTheme,
-  useAppletTheme,
-  useAppletThemeRoot,
-} from './AppletTheme.jsx'
+import { AppletThemeProvider, createAppletTheme, DEFAULT_APPLET_THEME, resolveAppletTheme, useAppletTheme, useAppletThemeRoot } from './AppletTheme.jsx'
 
 function ThemeProbe() {
   const theme = useAppletTheme()

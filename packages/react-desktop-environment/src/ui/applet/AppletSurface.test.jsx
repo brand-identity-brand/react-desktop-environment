@@ -7,8 +7,8 @@ import useChildSurfaceComposition from '../../applet-engine/useChildSurfaceCompo
 import * as compositor from '../../compositor/index.js'
 import * as windowManager from '../../window-manager/index.js'
 import Window from '../Window.jsx'
-import appletComposition from './appletComposition.js'
-import AppletSurface from './AppletSurface.jsx'
+import AppletSurface, { AppletPresentation } from './AppletSurface.jsx'
+import { DEFAULT_APPLET_THEME, useAppletTheme } from './AppletTheme.jsx'
 
 const desktopEnvironment = { compositor, windowManager, ui: { Window } }
 const engines = []
@@ -28,13 +28,13 @@ function Counter() {
   return <button onClick={() => setCount(count + 1)}>Count {count}</button>
 }
 
-function mount(Root, setup = () => {}, composition = appletComposition) {
-  const engine = AppletEngine.create({ applet: Root, desktopEnvironment, composition })
+function mount(Root, setup = () => {}, renderSurface) {
+  const engine = AppletEngine.create({ applet: Root, desktopEnvironment })
   engines.push(engine)
   setup(engine)
   const view = render(
     <AppletEnvironment desktopEnvironment={desktopEnvironment}>
-      <AppletEngine engine={engine}><Root /></AppletEngine>
+      <AppletEngine engine={engine}><AppletPresentation renderSurface={renderSurface}><Root /></AppletPresentation></AppletEngine>
     </AppletEnvironment>,
   )
   return { engine, ...view }
@@ -48,7 +48,7 @@ const firePointer = (element, type, values) => {
 
 it('keeps stock descendants selectable and retained when their parent has a custom frame', () => {
   const counter = define('counter', Counter)
-  const host = define('host', () => null, { counter })
+  const host = define('host', ({ surface }) => <AppletPresentation surface={surface} />, { counter })
   host.recipes = [Object.freeze({ name: 'inside', residents: [{ applet: 'counter' }] })]
   const outside = define('outside', () => <p>Outside content</p>)
   const Root = define('root', () => <p>Root content</p>, { host, outside })
@@ -59,12 +59,10 @@ it('keeps stock descendants selectable and retained when their parent has a cust
     const visible = selection.selectedSurfaceId === surface.surfaceId
     return <section style={{ position: 'absolute', inset: '36px 0 0', display: visible ? 'block' : 'none' }}>{children}</section>
   }
-  mount(Root, undefined, {
-    ...appletComposition,
-    ReferenceSurface: (props) => props.surface.application.applicationName === 'root/host'
+  mount(Root, undefined, (props) => props.surface.application.applicationName === 'root/host'
       ? <CustomHost {...props} />
       : <AppletSurface {...props} />,
-  })
+  )
 
   fireEvent.click(screen.getByRole('button', { name: 'Count 0' }))
   const retainedCounter = screen.getByRole('button', { name: 'Count 1' })
@@ -73,6 +71,34 @@ it('keeps stock descendants selectable and retained when their parent has a cust
   expect(screen.getByText('Count 1')).toBe(retainedCounter)
   fireEvent.click(screen.getByRole('button', { name: 'host', exact: true }))
   expect(screen.getByRole('button', { name: 'Count 1' })).toBe(retainedCounter)
+})
+
+it('keeps a nested Applet in control of its theme, frame, and child traversal', () => {
+  const Leaf = define('leaf', () => <output>{useAppletTheme().backgroundColor}</output>)
+  const localFrame = ({ children }) => <section data-local-frame="">{children}</section>
+  const Child = define('child', ({ surface }) => <AppletPresentation surface={surface} scheme="night" renderSurface={localFrame} />, { leaf: Leaf })
+  const Root = define('root', () => null, { child: Child })
+  Root.meta.theme = { ...DEFAULT_APPLET_THEME, reconcile: (identity, scheme) => ({
+    ...identity, backgroundColor: scheme === 'night' ? 'black' : 'white',
+  }) }
+  const engine = AppletEngine.create({ applet: Root, desktopEnvironment })
+  engines.push(engine)
+  const application = engine.runtime.applicationForNode(Child)
+  const surface = engine.runtime.createReferenceSurface({ applicationId: application.applicationId, ownerSurfaceId: engine.rootSurfaceId })
+  engine.runtime.createReferenceSurface({ applicationId: engine.runtime.applicationForNode(Leaf).applicationId, ownerSurfaceId: surface.surfaceId })
+  const runtime = engine.runtime
+  const source = engine.compositor
+  const view = render(<AppletEngine engine={engine}><Child application={application} surface={surface} /></AppletEngine>)
+  const verify = () => {
+    expect(view.container.querySelectorAll('output')).toHaveLength(1)
+    expect(view.container.querySelector('output').textContent).toBe('black')
+    expect(view.container.querySelectorAll('[data-local-frame]')).toHaveLength(1)
+    expect(engine.runtime).toBe(runtime)
+    expect(engine.compositor).toBe(source)
+  }
+  verify()
+  view.rerender(<AppletEngine engine={engine}><AppletPresentation scheme="day" /></AppletEngine>)
+  verify()
 })
 
 it('connects floating drag, sizing, fullscreen, restore, and close controls to the occurrence', () => {
@@ -123,9 +149,9 @@ it('connects floating drag, sizing, fullscreen, restore, and close controls to t
 it('starts an independent stock engine inside a selected Deck without inheriting its exposure', () => {
   const Inner = define('inner', () => null, { counter: define('counter', Counter) })
   Inner.recipes = [Object.freeze({ name: 'inside', residents: [{ applet: 'counter' }] })]
-  const innerEngine = AppletEngine.create({ applet: Inner, desktopEnvironment, composition: appletComposition })
+  const innerEngine = AppletEngine.create({ applet: Inner, desktopEnvironment })
   engines.push(innerEngine)
-  const embedded = define('embedded', () => <AppletEngine engine={innerEngine}><Inner /></AppletEngine>)
+  const embedded = define('embedded', () => <AppletEngine engine={innerEngine}><AppletPresentation><Inner /></AppletPresentation></AppletEngine>)
   const Outer = define('outer', () => null, { embedded })
   Outer.recipes = [Object.freeze({ name: 'outside', residents: [{ applet: 'embedded' }] })]
   mount(Outer)

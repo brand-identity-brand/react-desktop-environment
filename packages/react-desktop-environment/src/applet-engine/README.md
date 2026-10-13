@@ -2,8 +2,8 @@
 
 An Applet recursively declares available application definitions. AppletEngine
 raises one definition tree into Applications, Windows, Surfaces, named
-Application state, resident Decks, and complete checkpoints. Its replaceable
-composition material supplies presentation without changing runtime ownership.
+Application state, resident Decks, and complete checkpoints. Presentation belongs
+to the GUI that consumes those records and operations.
 
 ## Public entry
 
@@ -19,10 +19,9 @@ The entry also exports `Deck`, `useDeckComposition`,
 `useChildSurfaceComposition`, `useWhichApplet`, `resolveDeckProps`,
 `minimumPresentationSize`, `constrainPresentationSize`, `AppletApplicationContext`,
 `AppletStateStoreContext`, `createAppletStateStore`, `immutableJson`,
-`validateSurfaceState`, `useAppletState`, and generic theme contracts described
-below. All bindings use one canonical set of contexts and the consumer's React.
+`validateSurfaceState`, and `useAppletState`. All bindings use one canonical set of contexts and the consumer's React.
 
-`createAppletEngine(Applet, { composition })` creates a definition-local React
+`createAppletEngine(Applet)` creates a definition-local React
 binding. Its `.Applet` names that definition and `.Runtime` is the canonical
 `AppletEngine`. It exposes the same construction, registry, state, and context
 operations; the binder supplies the definition's default desktop environment.
@@ -57,7 +56,7 @@ const surface = engine.compositor.surface.read(rootSurface)
 ```
 
 The owner creates that engine with `AppletEngine.create({ applet: Applet,
-desktopEnvironment: Applet.desktopEnvironment, composition })` and disposes it
+desktopEnvironment: Applet.desktopEnvironment })` and disposes it
 when its lifetime ends. If a direct composition
 owner lacks occurrence records, it calls `useWhichApplet` in its own existing
 component and passes the result to the Applet. No entry wrapper is required.
@@ -67,17 +66,15 @@ An optional `.Settings` is the exact registered `applets.settings` definition.
 children of the exact supplied containers and returns registered contribution
 nodes. Discovery neither creates occurrences nor maintains another registry.
 
-`AppletEngine.create({ applet, desktopEnvironment, composition, options,
-rootApplet, scheme })` constructs a runtime. The environment supplies the public
-window-manager and compositor factories and optional default Window material.
+`AppletEngine.create({ applet, desktopEnvironment, options, rootApplet })` constructs a runtime. The environment supplies the public
+window-manager and compositor factories.
 The engine registers its `deck` definition alongside the supplied tree,
 creates permanent Applications and a root Window/Surface, and owns state,
 checkpoints, occurrence operations, and unreachable dynamic cleanup.
 
 An `AppletEngine` provider without a supplied or inherited engine constructs
-and disposes its engine. It owns reset and theme observation. A nested provider
-reuses the existing engine. A supplied live `scheme` updates that same runtime.
-An explicitly injected `engine` receives its root Application/state/composition
+and disposes its engine. It owns reset. A nested provider reuses the existing
+engine. An explicitly injected `engine` receives its root Application and state
 contexts, including when it differs from a surrounding runtime. Injecting the
 same surrounding engine preserves the current nested Application context.
 The injector owns disposal through `engine.destroy()`.
@@ -93,43 +90,17 @@ state. Closing the last Surface of an Application ends its named state;
 unreachable dynamic branches are removed. A later occurrence begins from its
 owners' current defaults.
 
-## Composition material
+## GUI composition
 
-The constructor, React `AppletEngine`, and definition binder accept the same
-optional composition object:
+AppletEngine does not accept or store presentation configuration. Its constructor,
+React provider, and definition binder neither install GUI providers nor resolve
+themes, adapt RootApplet material, or choose reference and Deck presentations.
+A supplied engine is used unchanged. The provider exposes runtime contexts and
+renders its children; the GUI explicitly composes its own rendering.
 
-```js
-const composition = {
-  ReferenceSurface,
-  Provider,
-  Boundary,
-  ThemeProvider,
-  defaultTheme,
-  DeckSurface,
-  rootDefaults: { Record, Tab },
-}
-```
-
-`ReferenceSurface` renders registered reference placements.
-`Provider` wraps the runtime's React content and receives the optional `dnd`
-props. `Boundary` establishes a definition binder's recursive presentation
-boundary. Raw `AppletEngine` composition does not insert that definition
-boundary: an injected root can render its references through the root composer.
-`ThemeProvider` may compose additional consumer context around the exported
-generic theme provider; it receives the exact resolved occurrence material and
-recorded `themeRoot`, and must retain that canonical theme context.
-`defaultTheme` supplies a complete consumer fallback declaration, resolved by
-the same scheme path for null and unavailable roots.
-`rootDefaults` supplies absent product material on a nonmutating adaptation of
-the requested RootApplet. Existing RootApplet material is retained. The package
-does not import domain definitions, data clients, visual assets, drag systems,
-or host authentication.
-
-Omitted material has a neutral behavior: reference placements render children
-under their occurrence theme, Provider and Boundary pass children through, and
-the Deck supplies no additional visual content. Compositor traversal still
-enters the complete tree. A visual consumer supplies its own presentation and
-selection/disclosure treatment.
+Each Applet brings the providers and material needed by its own GUI. A host
+renders it with its Application and Surface inside an engine context. The
+[stock UI](../ui/applet/README.md) is one independent implementation of this rule.
 
 The shared compositor `SurfaceComposer` owns recursive runtime traversal. The
 live Surface and Window tree determines which occurrences it renders and how
@@ -139,6 +110,15 @@ selection, and placement, including mounted and floating frames. Routing known
 Applets or fixed occurrence identities into predetermined slots is directly
 authored composition; it does not belong around `SurfaceComposer`.
 
+The GUI passes `renderSurface(props)` and `renderApplication(Applet, props)` to
+`SurfaceComposer` to draw frames and Applets, including its own Deck material.
+These callbacks belong to that rendered tree and are not stored on the engine.
+Without callbacks the composer uses its registered components.
+Applet GUIs use `recursive={false}` to render their immediate children; each
+child Applet then renders its own descendants through its own GUI. The stock
+Deck GUI does the same for Deck members. The lower-level default remains
+recursive for consumers that own a whole Surface tree. Application identity
+keys the mounted Applet in both default and callback rendering paths.
 The composer receives `applicationContext={AppletApplicationContext}` and
 enters the linked Application with `application`, `surface`, `window`, and
 `controls`. Presentation owners consume these structural records instead of
@@ -198,16 +178,15 @@ completion removes its resident relation and supplies a fresh occurrence.
 Ordinary members have no supply requirement. An ordinary member added to an
 admitting resident Deck leaves its recipe-owned members intact.
 
-The generic `Deck` invokes `composition.DeckSurface` with the live model:
+The generic `Deck` has no drawing implementation. Its GUI calls
+`useDeckComposition` for the live model:
 `application`, `engine`, `surface`, `composition`, `residents`, `addable`,
 `unmountable`, `menuOpen`, and `onMenuOpenChange`.
-`useDeckComposition` provides that same model for direct material composition.
+The GUI renders its own material from that model.
 The controller owns ordered resident slots, placeholder definition lookup and
 nonpersistent menu state. `resolveDeckProps(props)` supplies the same admission
 and unmounting defaults for controllers and imperative opening operations.
 The consumer provides movement declarations and visual rendering.
-`Deck.Bar`, `Presentation`, `Placeholder`, `Spine`, and `Switch` resolve the
-corresponding supplied DeckSurface parts through the same runtime.
 
 ## Occurrence operations
 
@@ -217,7 +196,7 @@ direct composition owner's Applet occurrence. It returns
 definition-local binding supplies that definition automatically. The hook uses
 an explicitly supplied `engine` or the current engine context, and returns null
 records when neither exists. An inherited Application belongs only to its
-context's engine. Engine creation, reset, theme observation, disposal, and the
+context's engine. Engine creation, reset, disposal, and the
 `onEngine` callback belong to the provider.
 
 The direct owner calls this hook only when it needs occurrence records. The
@@ -336,55 +315,19 @@ Applet's live `meta.minimumSize`, defaulting to 240 by 180. Deck selection
 resolves the actual presented definition. Consumer sizing/peeling material
 uses that same definition contract; container allocations remain separate.
 
-## Themes
+## GUI state and material
 
-The public theme API exports `createAppletTheme`, `resolveAppletTheme`,
-`AppletThemeProvider`, `useAppletTheme`, `useAppletThemeRoot`,
-`AppletThemeContext`, `AppletThemeRootContext`, and `DEFAULT_APPLET_THEME`.
-A declaration supplies complete colour identity: `backgroundColor`, `fontColor`,
-nullable `borderColor`, `highlightColor`, and `shadowColor`. Consumer-owned
-material fields are retained as immutable plain objects, arrays, strings,
-booleans, finite numbers, or null. An optional `reconcile(identity, scheme)`
-resolves that declaration into complete material; `identity` excludes the
-reconciler and is immutable. The result carries the same five base colour fields
-and any consumer-defined roles. Reconciliation is pure and cannot return a
-second reconciler. The runtime validates declarations and resolved material.
+GUI owners can store durable occurrence data in Surface props through
+`runtime.writeSurfaceProps({ surfaceId, props, supply })`. This merges the
+supplied props using literal property keys, including dots and colons, in both
+live state and the clean baseline. An ordinary write ends supply eligibility for its fields;
+`supply: { surfaceId: ownerSurfaceId }` follows the same default-supply rules as
+other runtime operations and updates an existing clean baseline. The runtime
+does not interpret GUI fields or choose their values.
 
-A definition declaring `meta.theme` establishes a theme root. Other occurrences
-inherit the root of the occurrence that instantiated them. Surface props record
-that root's full registry name; movement retains it. `runtime.themeFor(surface)`
-selects this recorded origin and resolves its registered declaration with the
-live scheme. An unavailable root or explicit null resolves `composition.defaultTheme`,
-or the product-independent neutral fallback when none is supplied. An older
-entry without the field uses its definition's nearest static root.
-
-The constructor, React `AppletEngine`, and definition binder accept `scheme`.
-The key is a nonempty consumer-owned string; omission supplies `undefined` to
-the reconciler, which may define its default. `runtime.getScheme()` reads the
-selection, `runtime.setScheme(scheme)` changes it, and
-`runtime.subscribeTheme(listener)` observes changes independently of durable
-state. An outer React binding applies a supplied live scheme; nested bindings
-reuse its runtime and do not select a different scheme. An omitted React scheme
-leaves an injected runtime's existing selection intact. Repeating the selected
-key neither publishes nor recomputes material.
-
-Resolved material is cached per runtime, registered root, and scheme. Occurrences
-of one root share its exact object, while equal-valued roots and separate
-runtimes retain their own material identities. Returning to a previous scheme
-reuses its cached object. The public lookup and canonical context publish that
-same immutable result. Engine context observers re-render for live scheme changes
-while `AppletEngine.use()` and `useOptional()` retain the exact engine identity,
-including nested owners that resolve and publish their own occurrence material.
-`AppletThemeProvider` also resolves standalone declarations
-with its optional `scheme` and passes already resolved material unchanged.
-
-Scheme changes retain the engine, Applications, Surfaces, recorded roots, named
-state, complete checkpoints, and dirty status. `engine.destroy()` releases the
-runtime's theme subscriptions, cached material, and owned runtime subscriptions,
-then destroys its compositor. Owned React bindings perform this disposal on
-unmount; injected engines remain the injector's responsibility. Product scheme
-catalogues, palette meanings, font assets, CSS, and control-colour composition
-remain consumer-owned.
+Theme declarations, resolution, caches, and React theme contexts belong to the
+[UI theme contract](../ui/applet/README.md#themes). Changing GUI material does
+not require replacing, configuring, or publishing through the engine.
 
 ## Verification
 

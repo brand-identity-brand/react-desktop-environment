@@ -1,16 +1,10 @@
-import React from 'react'
 import AppletEngine from './AppletEngine.jsx'
 import useChildSurfaceComposition from './useChildSurfaceComposition.js'
 import { resolveDeckProps } from './deckProps.js'
 
-/** The engine's Deck definition; replaceable material receives its live model. */
-export default function Deck({ application, surface, ...props }) {
-  const engine = AppletEngine.use()
-  const model = useDeckComposition({ engine, surface })
-  const Surface = engine.composition.DeckSurface
-  return Surface ? (
-    <Surface {...props} {...model} application={application} engine={engine} surface={surface} />
-  ) : null
+/** Runtime identity for a Deck. Its GUI is composed by the presenting owner. */
+export default function Deck() {
+  return null
 }
 
 export function useDeckComposition({ engine, surface }) {
@@ -47,22 +41,6 @@ export function useDeckComposition({ engine, surface }) {
   }
 }
 
-function part(name) {
-  return function DeckPart(props) {
-    const engine = AppletEngine.use()
-    const Part = engine.composition.DeckSurface?.[name]
-    return Part ? <Part {...props} /> : null
-  }
-}
-
-Deck.Surface = Deck
-Deck.Bar = part('Bar')
-Deck.Presentation = part('Presentation')
-Deck.Placeholder = part('Placeholder')
-Deck.Spine = part('Spine')
-Deck.Switch = part('Switch')
-Deck.Switch.Bar = Deck.Switch
-Deck.Switch.Inline = Deck.Switch
 Deck.meta = Object.freeze({
   applicationName: 'deck',
   displayName: 'Surface Deck',

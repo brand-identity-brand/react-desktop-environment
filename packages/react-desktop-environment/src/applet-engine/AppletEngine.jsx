@@ -19,13 +19,6 @@ import {
   useAppletState,
   validateSurfaceState,
 } from './AppletState.js'
-import {
-  AppletThemeProvider,
-  DEFAULT_APPLET_THEME,
-  createAppletTheme,
-  resolveAppletTheme,
-  validateAppletScheme,
-} from './AppletTheme.jsx'
 import presentedSurface, { isDeckSurface, surfacePlacementOwnerId } from './presentedSurface.js'
 import { constrainPresentationSize, minimumPresentationSize } from './presentationSize.js'
 import createSurfaceTransfer from './surfaceTransfer.js'
@@ -218,9 +211,6 @@ function collectApplicationRegistry(rootApplet) {
       settingsApplicationName: settingsApplet
         ? `${applicationName}/settings`
         : null,
-      themeRoot: Object.hasOwn(Applet.meta, 'theme')
-        ? applicationName
-        : applicationRegistry[parentPath]?.themeRoot ?? null,
     }
     ancestors.add(Applet)
     for (const [childLocalName, ChildApplet] of Object.entries(childApplets)) {
@@ -376,53 +366,27 @@ function collectSettingsContributions(applicationRegistry, ownerNodes) {
   return Object.freeze(contributions)
 }
 
-function resolveRootApplet(rootApplet, fallbackApplet, defaults = {}) {
-  const resolvedRootApplet = rootApplet ?? fallbackApplet
-  if (typeof resolvedRootApplet !== 'function') {
-    throw new TypeError('RootApplet must be an Applet function')
-  }
-  const missing = Object.entries(defaults).filter(([key]) => resolvedRootApplet[key] === undefined)
-  if (!missing.length) return resolvedRootApplet
-  function RootAppletAdapter(props) {
-    const RootApplet = resolvedRootApplet
-    return <RootApplet {...props} />
-  }
-  Object.assign(RootAppletAdapter, resolvedRootApplet, Object.fromEntries(missing))
-  return RootAppletAdapter
+function resolveRootApplet(rootApplet, fallbackApplet) {
+  const resolved = rootApplet ?? fallbackApplet
+  if (typeof resolved !== 'function') throw new TypeError('RootApplet must be an Applet function')
+  return resolved
 }
 
-function PassThrough({ children }) {
+function ReferenceSurface({ children }) {
   return children
-}
-
-function ReferenceSurface({ children, surface }) {
-  const engine = useContext(AppletEngineContext)?.engine ?? null
-  useSyncExternalStore(engine.runtime.subscribeTheme, engine.runtime.getScheme, engine.runtime.getScheme)
-  const ThemeProvider = engine.composition.ThemeProvider ?? AppletThemeProvider
-  const themeRoot = surface.props?.themeRoot !== undefined
-    ? surface.props.themeRoot
-    : engine.runtime.resolveApplicationNode(surface.application)?.themeRoot ?? null
-  return (
-    <ThemeProvider theme={engine.runtime.themeFor(surface)} themeRoot={themeRoot}>
-      {children}
-    </ThemeProvider>
-  )
 }
 
 function constructAppletRuntime({
   applet,
   adoption,
-  composition = {},
   desktopEnvironment,
   options = {},
   resetRootApplet,
   rootApplet,
-  scheme,
 }) {
   const createWindowManager = desktopEnvironment?.windowManager
     ?.createWindowManager
   const createCompositor = desktopEnvironment?.compositor?.createCompositor
-  const Window = desktopEnvironment?.ui?.Window
 
   if (typeof createWindowManager !== 'function') {
     throw new TypeError('The desktop environment requires createWindowManager')
@@ -437,24 +401,14 @@ function constructAppletRuntime({
     throw new TypeError('options.beforeResetRootApplet must be a function')
   }
 
-  const RootApplet = resolveRootApplet(rootApplet, applet, composition.rootDefaults)
+  const RootApplet = resolveRootApplet(rootApplet, applet)
   if (Object.hasOwn(options, 'applicationRegistry')) {
     throw new Error(
       'options.applicationRegistry is not supported; register children through Applet.applets',
     )
   }
   const applicationRegistry = collectApplicationRegistry(applet)
-  let selectedScheme = validateAppletScheme(scheme)
   let destroyed = false
-  const themeListeners = new Set()
-  const themeCache = new Map()
-  const themeDeclarations = new Map(Object.values(applicationRegistry)
-    .filter(({ Applet }) => Object.hasOwn(Applet.meta, 'theme'))
-    .map(({ applicationName, Applet }) => [applicationName, createAppletTheme(Applet.meta.theme)]))
-  themeDeclarations.set(null, createAppletTheme(composition.defaultTheme ?? DEFAULT_APPLET_THEME))
-  const requireLiveTheme = () => {
-    if (destroyed) throw new Error('Applet runtime has been destroyed')
-  }
   const hasCheckpoint = (value) => value != null
     && (!Array.isArray(value) || value.length > 0)
   const readSurfaceStateOption = (surfaceState) => hasCheckpoint(surfaceState)
@@ -509,14 +463,16 @@ function constructAppletRuntime({
     return `${key}:${supply[key]}`
   }
   const equalValue = (first, second) => JSON.stringify(first) === JSON.stringify(second)
-  const readField = (record, field) => field.split('.').reduce(
+  const fieldPath = (field) => Array.isArray(field) ? field : [field]
+  const fieldKey = (surfaceId, field) => JSON.stringify([surfaceId, ...fieldPath(field)])
+  const readField = (record, field) => fieldPath(field).reduce(
     (value, key) => value?.[key], record,
   )
   const replaceField = (record, field, value) => {
-    const [key, ...rest] = field.split('.')
+    const [key, ...rest] = fieldPath(field)
     return {
       ...record,
-      [key]: rest.length ? replaceField(record?.[key], rest.join('.'), value) : value,
+      [key]: rest.length ? replaceField(record?.[key], rest, value) : value,
     }
   }
   const updateCleanEntry = (surfaceId, update) => {
@@ -525,7 +481,7 @@ function constructAppletRuntime({
       ? cloneJson(update(entry), 'Clean Surface state') : entry)
   }
   const eligibleField = (surfaceId, field, current, supply, missing = current == null) => {
-    const key = `${surfaceId}:${field}`
+    const key = fieldKey(surfaceId, field)
     if (!supply) {
       fieldSupplies.delete(key)
       return true
@@ -536,7 +492,8 @@ function constructAppletRuntime({
   }
   const suppliedField = (surfaceId, field, value, supply) => {
     if (!supply) return
-    fieldSupplies.set(`${surfaceId}:${field}`, {
+    fieldSupplies.set(fieldKey(surfaceId, field), {
+      surfaceId, field: fieldPath(field),
       owner: ownerKey(supply), supply: Object.freeze({ ...supply }), value,
     })
     updateCleanEntry(surfaceId, (entry) => replaceField(entry, field, value))
@@ -557,18 +514,8 @@ function constructAppletRuntime({
       node.Applet,
     ]),
   )
-  const surfaceComponentRegistry = Object.freeze({
-    ...(Window ? { window: Window } : {}),
-    reference: composition.ReferenceSurface ?? ReferenceSurface,
-    ...(options.surfaceComponentRegistry ?? {}),
-  })
-  const defaultSurfaceComponentName = options.defaultSurfaceComponentName
-    ?? 'window'
-  if (!surfaceComponentRegistry[defaultSurfaceComponentName]) {
-    throw new Error(
-      `Unknown default Surface component: ${defaultSurfaceComponentName}`,
-    )
-  }
+  const surfaceComponentRegistry = Object.freeze({ window: ReferenceSurface, reference: ReferenceSurface })
+  const defaultSurfaceComponentName = 'window'
 
   const windowManager = createWindowManager({
     ...windowManagerOptions,
@@ -620,7 +567,7 @@ function constructAppletRuntime({
           compositor.getSnapshot().surfaces,
         ).find(({ windowId }) => windowId === parentWindowId)
         if (!parentSurface) return controls.show()
-        fieldSupplies.delete(`${parentSurface.surfaceId}:selectedChildSurfaceId`)
+        fieldSupplies.delete(fieldKey(parentSurface.surfaceId, 'selectedChildSurfaceId'))
         return compositor.surface.activateChild({
           childSurfaceId: surfaceId,
           surfaceId: parentSurface.surfaceId,
@@ -649,7 +596,7 @@ function constructAppletRuntime({
         const fullscreenSurface = compositor.surface.read({ surfaceId })
         const ownerSurfaceId = fullscreenSurface?.props?.ownerSurfaceId
         if (!ownerSurfaceId) return fullscreenSurface
-        fieldSupplies.delete(`${ownerSurfaceId}:selectedChildSurfaceId`)
+        fieldSupplies.delete(fieldKey(ownerSurfaceId, 'selectedChildSurfaceId'))
         return compositor.surface.activateChild({
           childSurfaceId: surfaceId,
           surfaceId: ownerSurfaceId,
@@ -674,7 +621,7 @@ function constructAppletRuntime({
       }
       const selectChild = (childSurfaceId) => runtime.selectChild({ surfaceId, childSurfaceId })
       const move = (...args) => {
-        fieldSupplies.delete(`${surfaceId}:position`)
+        fieldSupplies.delete(fieldKey(surfaceId, 'position'))
         return controls.move(...args)
       }
       const extendedControls = Object.freeze({
@@ -828,7 +775,7 @@ function constructAppletRuntime({
       surface: compositor.surface.create({
         surfaceId: defaultId('root-surface', 'surface'),
         applicationId: rootApplication.applicationId,
-        props: { themeRoot: rootApplicationName },
+        props: {},
         surfaceComponentName: defaultSurfaceComponentName,
         windowId: rootWindow.windowId,
         workspaceId: options.rootWorkspaceId ?? rootApplicationName,
@@ -1018,15 +965,11 @@ function constructAppletRuntime({
   const resolveApplicationNode = (applicationOrName) => (
     resolveRegistryNode(applicationRegistry, applicationOrName)
   )
-  const surfaceThemeRoot = (surface) => (
-    surface?.props?.themeRoot !== undefined
-      ? surface.props.themeRoot
-      : resolveApplicationNode(surface?.application)?.themeRoot ?? null
-  )
+
   const supplyOccurrence = (surfaceId, supply) => {
     ownerKey(supply)
     const surface = compositor.surface.read({ surfaceId })
-    for (const field of ['position', 'size', 'selectedChildSurfaceId', 'fullscreen', 'props.order']) {
+    for (const field of ['position', 'size', 'selectedChildSurfaceId', 'fullscreen', ['props', 'order']]) {
       const value = readField(surface, field)
       if (value != null) suppliedField(surfaceId, field, value, supply)
     }
@@ -1087,7 +1030,7 @@ function constructAppletRuntime({
       const childSurfaceId = selected?.surfaceId ?? null
       if (childSurfaceId === owner.selectedChildSurfaceId) continue
       compositor.surface.selectChild({ surfaceId: owner.surfaceId, childSurfaceId })
-      if (departed || retainedDecks.has(owner.surfaceId)) fieldSupplies.delete(`${owner.surfaceId}:selectedChildSurfaceId`)
+      if (departed || retainedDecks.has(owner.surfaceId)) fieldSupplies.delete(fieldKey(owner.surfaceId, 'selectedChildSurfaceId'))
       else suppliedField(owner.surfaceId, 'selectedChildSurfaceId', childSurfaceId, { surfaceId: owner.surfaceId })
     }
   }
@@ -1153,7 +1096,8 @@ function constructAppletRuntime({
         supply, !compositor.surface.read({ surfaceId: activeWorkspaceSurfaceId }))) return surface
       activeWorkspaceSurfaceId = surfaceId
       if (supply) {
-        fieldSupplies.set(`${rootSurface.surfaceId}:activeWorkspace`, {
+        fieldSupplies.set(fieldKey(rootSurface.surfaceId, 'activeWorkspace'), {
+          surfaceId: rootSurface.surfaceId, field: ['activeWorkspace'],
           owner: ownerKey(supply), supply: Object.freeze({ ...supply }), value: surfaceId,
         })
         if (cleanEntries !== null) cleanEntries = cleanEntries.map((entry) => {
@@ -1184,7 +1128,7 @@ function constructAppletRuntime({
     },
     selectionSupply({ surfaceId }) {
       const current = compositor.surface.read({ surfaceId })?.selectedChildSurfaceId
-      const supplied = fieldSupplies.get(`${surfaceId}:selectedChildSurfaceId`)
+      const supplied = fieldSupplies.get(fieldKey(surfaceId, 'selectedChildSurfaceId'))
       return supplied && supplied.value === current ? supplied.supply : undefined
     },
     applicationForNode(nodeOrApplicationName) {
@@ -1287,11 +1231,7 @@ function constructAppletRuntime({
         surface: compositor.surface.create({
           surfaceId: defaultId(`anchor:${key}`, 'surface'),
           applicationId,
-          props: {
-            themeRoot: resolveApplicationNode(compositor.application.read({
-              applicationId,
-            }))?.themeRoot ?? null,
-          },
+          props: {},
           surfaceComponentName: 'reference',
           windowId: window.windowId,
           workspaceId,
@@ -1311,7 +1251,6 @@ function constructAppletRuntime({
       size,
       surfaceProps,
       supply,
-      themeRoot,
       workspaceId,
     }) {
       if (supply) ownerKey(supply)
@@ -1321,12 +1260,6 @@ function constructAppletRuntime({
       if (!ownerSurface) {
         throw new Error(`Unknown reference-surface owner: ${ownerSurfaceId}`)
       }
-      const applicationNode = resolveApplicationNode(compositor.application.read({
-        applicationId,
-      }))
-      const referenceThemeRoot = Object.hasOwn(applicationNode.Applet.meta, 'theme')
-        ? applicationNode.applicationName
-        : themeRoot !== undefined ? themeRoot : surfaceThemeRoot(ownerSurface)
       const supplyTarget = supply
         ? `${ownerKey(supply)}:reference:${applicationId}` : null
       const window = windowManager.window.add({
@@ -1345,7 +1278,6 @@ function constructAppletRuntime({
             props: {
               ...surfaceProps,
               ownerSurfaceId,
-              themeRoot: referenceThemeRoot,
             },
             size,
             surfaceComponentName: 'reference',
@@ -1362,39 +1294,21 @@ function constructAppletRuntime({
         throw error
       }
     },
+    writeSurfaceProps({ surfaceId, props, supply }) {
+      const current = compositor.surface.read({ surfaceId })
+      if (!current) throw new Error(`Unknown Surface: ${surfaceId}`)
+      const entries = Object.entries(props).filter(([key]) => eligibleField(
+        surfaceId, ['props', key], current.props[key], supply, !Object.hasOwn(current.props, key),
+      ))
+      if (!entries.length) return current
+      const nextProps = { ...current.props, ...Object.fromEntries(entries) }
+      const updated = compositor.surface.update({ surfaceId, props: nextProps })
+      for (const [key, value] of entries) {
+        suppliedField(surfaceId, ['props', key], value, supply)
+      }
+      return updated
+    },
     resolveApplicationNode,
-    getScheme() {
-      return selectedScheme
-    },
-    setScheme(nextScheme) {
-      requireLiveTheme()
-      validateAppletScheme(nextScheme)
-      if (nextScheme === selectedScheme) return
-      selectedScheme = nextScheme
-      themeListeners.forEach((listener) => listener())
-    },
-    subscribeTheme(listener) {
-      requireLiveTheme()
-      if (typeof listener !== 'function') throw new TypeError('Applet theme listener must be a function')
-      themeListeners.add(listener)
-      return () => themeListeners.delete(listener)
-    },
-    themeFor(surface) {
-      requireLiveTheme()
-      const recordedRoot = surfaceThemeRoot(surface)
-      const root = themeDeclarations.has(recordedRoot) ? recordedRoot : null
-      let schemes = themeCache.get(root)
-      if (!schemes) {
-        schemes = new Map()
-        themeCache.set(root, schemes)
-      }
-      if (!schemes.has(selectedScheme)) {
-        schemes.set(selectedScheme, createAppletTheme({
-          ...resolveAppletTheme(themeDeclarations.get(root), selectedScheme),
-        }))
-      }
-      return schemes.get(selectedScheme)
-    },
 
   })
 
@@ -1403,7 +1317,7 @@ function constructAppletRuntime({
     runtime,
     retainDeck,
     restoreSelection({ surfaceId, childSurfaceId }) {
-      fieldSupplies.delete(`${surfaceId}:selectedChildSurfaceId`)
+      fieldSupplies.delete(fieldKey(surfaceId, 'selectedChildSurfaceId'))
       return compositor.surface.selectChild({ surfaceId, childSurfaceId })
     },
   })
@@ -1462,16 +1376,16 @@ function constructAppletRuntime({
             const supply = { surfaceId: containerSurfaceId }
             const adoptingOrder = restoredResidence.delete(resident.surfaceId)
             const suppliesOrder = adoptingOrder || eligibleField(
-              resident.surfaceId, 'props.order', resident.props.order, supply,
+              resident.surfaceId, ['props', 'order'], resident.props.order, supply,
             )
             if (resident.props.order !== request.order && suppliesOrder) {
               compositor.surface.update({
                 surfaceId: resident.surfaceId,
                 props: { ...resident.props, order: request.order },
               })
-              suppliedField(resident.surfaceId, 'props.order', request.order, supply)
+              suppliedField(resident.surfaceId, ['props', 'order'], request.order, supply)
             } else if (adoptingOrder) {
-              suppliedField(resident.surfaceId, 'props.order', request.order, supply)
+              suppliedField(resident.surfaceId, ['props', 'order'], request.order, supply)
             }
             continue
           }
@@ -1617,12 +1531,10 @@ function constructAppletRuntime({
       delete cleanOptions.cleanState
       cleanEntries = constructAppletRuntime({
         applet,
-        composition,
-        desktopEnvironment,
+      desktopEnvironment,
         options: cleanOptions,
         rootApplet,
-        scheme,
-        adoption: {
+              adoption: {
           createId: suppliedCreateId,
           defaultIds,
           reservedIds,
@@ -1729,13 +1641,12 @@ function constructAppletRuntime({
           }
         }
         for (const [key, declaration] of fieldSupplies) {
-          const field = key.slice(key.lastIndexOf(':') + 1)
-          const surfaceId = key.slice(0, key.lastIndexOf(':'))
+          const { field, surfaceId } = declaration
           const surface = current.surfaces[surfaceId]
           const ownerAlive = declaration.supply.surfaceId
             ? current.surfaces[declaration.supply.surfaceId]
             : applicationIds.has(declaration.supply.applicationId)
-          const value = field === 'activeWorkspace' ? activeWorkspaceSurfaceId : readField(surface, field)
+          const value = field.length === 1 && field[0] === 'activeWorkspace' ? activeWorkspaceSurfaceId : readField(surface, field)
           if (!surface || !ownerAlive || !equalValue(value, declaration.value)) fieldSupplies.delete(key)
         }
         const removedWindows = new Set(removed.map(({ windowId }) => windowId))
@@ -1772,16 +1683,12 @@ function constructAppletRuntime({
       destroyed = true
       unsubscribeCompositor()
       unsubscribeAppletState()
-      themeListeners.clear()
-      themeCache.clear()
-      themeDeclarations.clear()
       checkpointListeners.clear()
       retainedDecks.clear()
       emptyDecks.clear()
       compositor.destroy()
     },
     appletState,
-    composition,
     applicationInstances,
     applicationRegistry,
     compositor,
@@ -1797,21 +1704,18 @@ function constructAppletRuntime({
   })
 }
 
-function createAppletEngine({ applet, composition, desktopEnvironment, options, resetRootApplet, rootApplet, scheme }) {
-  return constructAppletRuntime({ applet, composition, desktopEnvironment, options, resetRootApplet, rootApplet, scheme })
+function createAppletEngine({ applet, desktopEnvironment = applet.desktopEnvironment, options, resetRootApplet, rootApplet }) {
+  return constructAppletRuntime({ applet, desktopEnvironment, options, resetRootApplet, rootApplet })
 }
 
 export default function AppletEngine({
   RootApplet,
   applet,
   children,
-  composition,
   desktopEnvironment: suppliedDesktopEnvironment,
-  dnd,
   engine: suppliedEngine,
   onEngine,
   options,
-  scheme,
 }) {
   const inheritedEngine = useContext(AppletEngineContext)?.engine ?? null
   const inheritedDesktopEnvironment = AppletEnvironment.use()
@@ -1852,20 +1756,14 @@ export default function AppletEngine({
       : { ...(options ?? {}), initialState: null, cleanState: null }
     const engine = createAppletEngine({
       applet,
-      composition,
       desktopEnvironment,
       options: runtimeOptions,
       resetRootApplet,
       rootApplet: RootApplet,
-      scheme,
     })
     return { engine, mountedEffects: 0, destroyed: false }
   }, [ownsEngine, runtimeRevision])
   const engine = suppliedEngine ?? inheritedEngine ?? ownedRuntime.engine
-  const selectedScheme = useSyncExternalStore(engine.runtime.subscribeTheme, engine.runtime.getScheme, engine.runtime.getScheme)
-  useLayoutEffect(() => {
-    if (hostsRuntime && scheme !== undefined) engine.runtime.setScheme(scheme)
-  }, [engine, hostsRuntime, scheme])
   useEffect(() => {
     if (engine) onEngine?.(engine)
   }, [engine, onEngine])
@@ -1882,40 +1780,22 @@ export default function AppletEngine({
       })
     }
   }, [ownedRuntime])
-  const engineContext = useMemo(() => ({ engine, scheme: selectedScheme }), [engine, selectedScheme])
+  const engineContext = useMemo(() => ({ engine }), [engine])
   const presentation = useRef({ engine, revision: 0 })
   if (presentation.current.engine !== engine) {
     presentation.current = { engine, revision: presentation.current.revision + 1 }
   }
-  const rootSurface = engine.compositor.surface.read({ surfaceId: engine.rootSurfaceId })
-  const rootThemeRoot = rootSurface?.props?.themeRoot !== undefined
-    ? rootSurface.props.themeRoot
-    : engine.runtime.resolveApplicationNode(rootSurface?.application)?.themeRoot ?? null
-  const Provider = engine.composition.Provider ?? PassThrough
-  const ThemeProvider = engine.composition.ThemeProvider ?? AppletThemeProvider
-  const content = hostsRuntime
-    ? (
-        <AppletStateStoreContext.Provider value={engine.appletState}>
-          <AppletApplicationContext.Provider
-            value={engine.compositor.application.read({ applicationId: engine.rootApplicationId })}
-          >
-            <ThemeProvider theme={engine.runtime.themeFor(rootSurface)} themeRoot={rootThemeRoot}>
-              <desktopEnvironment.compositor.SurfaceComposer
-                applicationContext={AppletApplicationContext}
-                compositor={engine.compositor}
-                surfaceId={engine.rootSurfaceId}
-              >
-                {children}
-              </desktopEnvironment.compositor.SurfaceComposer>
-            </ThemeProvider>
-          </AppletApplicationContext.Provider>
-        </AppletStateStoreContext.Provider>
-      )
-    : children
+  const content = hostsRuntime ? (
+    <AppletStateStoreContext.Provider value={engine.appletState}>
+      <AppletApplicationContext.Provider value={engine.compositor.application.read({ applicationId: engine.rootApplicationId })}>
+        {children}
+      </AppletApplicationContext.Provider>
+    </AppletStateStoreContext.Provider>
+  ) : children
   return (
     <AppletEngineContext.Provider key={presentation.current.revision} value={engineContext}>
       <AppletEngineOwnershipContext.Provider value={ownsEngine}>
-        <Provider {...dnd}>{content}</Provider>
+        {content}
       </AppletEngineOwnershipContext.Provider>
     </AppletEngineContext.Provider>
   )
@@ -1982,14 +1862,12 @@ AppletEngine.useOptional = function useOptionalAppletEngine() {
 AppletEngine.useRootApplet = function useRootApplet(
   suppliedRootApplet,
   fallbackApplet,
-  defaults,
 ) {
   const engine = useContext(AppletEngineContext)?.engine ?? null
   return resolveRootApplet(
     suppliedRootApplet ?? engine?.rootApplet,
     fallbackApplet,
-    defaults,
-  )
+    )
 }
 AppletEngine.useOwnership = function useAppletEngineOwnership() {
   return useContext(AppletEngineOwnershipContext)

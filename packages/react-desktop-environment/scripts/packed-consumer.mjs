@@ -10,15 +10,12 @@ import * as compositor from 'react-desktop-environment/compositor'
 import * as windowManager from 'react-desktop-environment/window-manager'
 import * as windowReact from 'react-desktop-environment/window-manager/react'
 import * as ui from 'react-desktop-environment/ui'
-import { appletComposition } from 'react-desktop-environment/ui/applet'
+import { AppletPresentation, DEFAULT_APPLET_THEME, resolveAppletTheme, useAppletTheme } from 'react-desktop-environment/ui/applet'
 import {
   AppletEngine,
   AppletStateStoreContext,
   createAppletEngine,
   createAppletStateStore,
-  DEFAULT_APPLET_THEME,
-  resolveAppletTheme,
-  useAppletTheme,
 } from 'react-desktop-environment/applet-engine'
 import { createAppletPersistence, resolveInitialAppletCheckpoint } from 'react-desktop-environment/applet-persistence'
 import { createIndexedDbAppletStore } from 'react-desktop-environment/applet-persistence/indexed-db'
@@ -60,11 +57,11 @@ Notebook.meta = Object.freeze({
 Notebook.applets = Object.freeze({ note: Note })
 Notebook.recipes = Object.freeze([Object.freeze({ name: 'notes', addable: true, residents: [{ applet: 'note' }] })])
 Notebook.desktopEnvironment = environment
-const BoundEngine = createAppletEngine(Notebook, { composition: appletComposition })
+const BoundEngine = createAppletEngine(Notebook)
 assert.equal(BoundEngine.Runtime, AppletEngine)
 const root = createRoot(document.getElementById('root'))
 await act(async () => {
-  root.render(h(BoundEngine, { scheme: 'day', onEngine: (engine) => { currentEngine = engine } }))
+  root.render(h(BoundEngine, { onEngine: (engine) => { currentEngine = engine } }, h(AppletPresentation, { scheme: 'day' })))
 })
 assert.equal(document.querySelector('output').textContent, 'original')
 assert.equal(observedTheme.backgroundColor, 'navy')
@@ -72,26 +69,17 @@ const originalEngine = currentEngine
 const originalApplicationId = noteApplication.applicationId
 const originalSurface = Object.values(currentEngine.compositor.getSnapshot().surfaces)
   .find(({ applicationId }) => applicationId === originalApplicationId)
-assert.equal(observedTheme, currentEngine.runtime.themeFor(originalSurface))
 assert.equal(observedTheme.canvasColor, 'white')
 assert.equal(resolveAppletTheme(observedTheme), observedTheme)
 const initialCheckpoint = currentEngine.checkpoint.getSnapshot()
 const initialDirty = currentEngine.checkpoint.isDirty()
-let themeChanges = 0
-const unsubscribeTheme = currentEngine.runtime.subscribeTheme(() => { themeChanges += 1 })
 await act(async () => {
-  root.render(h(BoundEngine, { scheme: 'night', onEngine: (engine) => { currentEngine = engine } }))
+  root.render(h(BoundEngine, { onEngine: (engine) => { currentEngine = engine } }, h(AppletPresentation, { scheme: 'night' })))
 })
 assert.equal(currentEngine, originalEngine)
-assert.equal(currentEngine.runtime.getScheme(), 'night')
-assert.equal(observedTheme, currentEngine.runtime.themeFor(originalSurface))
 assert.equal(observedTheme.canvasColor, 'black')
 assert.equal(currentEngine.checkpoint.getSnapshot(), initialCheckpoint)
 assert.equal(currentEngine.checkpoint.isDirty(), initialDirty)
-assert.equal(themeChanges, 1)
-currentEngine.runtime.setScheme('night')
-assert.equal(themeChanges, 1)
-unsubscribeTheme()
 const [deck] = currentEngine.compositor.surface.readChildren({ surfaceId: currentEngine.rootSurfaceId })
 assert.equal(deck.props.addable, true)
 const deckMenu = Array.from(document.querySelectorAll('button'))
@@ -112,11 +100,11 @@ const saved = currentEngine.checkpoint.capture()
 assert.equal(saved.snapshot.find(({ surfaceId }) => surfaceId === originalSurface.surfaceId).appletState.text, 'retained')
 currentEngine.checkpoint.release(saved)
 await act(async () => { root.unmount() })
-const restored = AppletEngine.create({ applet: Notebook, desktopEnvironment: environment, composition: appletComposition, options: { initialState: saved.snapshot } })
+const restored = AppletEngine.create({ applet: Notebook, desktopEnvironment: environment, options: { initialState: saved.snapshot } })
 assert.equal(restored.rootSurfaceId, originalEngine.rootSurfaceId)
 assert.equal(restored.compositor.surface.read({ surfaceId: originalSurface.surfaceId }).applicationId, originalApplicationId)
 const restoredRoot = createRoot(document.getElementById('root'))
-await act(async () => { restoredRoot.render(h(BoundEngine, { engine: restored })) })
+await act(async () => { restoredRoot.render(h(BoundEngine, { engine: restored }, h(AppletPresentation))) })
 assert.equal(document.querySelector('output').textContent, 'retained')
 assert.equal(restored.checkpoint.isDirty(), false)
 const store = createIndexedDbAppletStore({ databaseName: 'independent-checkpoints', indexedDB: new IDBFactory() })

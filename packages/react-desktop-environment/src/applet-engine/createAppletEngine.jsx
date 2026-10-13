@@ -19,21 +19,18 @@ export const appletEngineApi = Object.freeze([
   'useState',
 ])
 
-export default function createAppletEngine(Applet, { composition } = {}) {
+export default function createAppletEngine(Applet) {
   function OwnerAppletEngine({
     applet = Applet,
     desktopEnvironment,
     ...props
   }) {
-    const Boundary = composition?.Boundary ?? React.Fragment
     return (
       <AppletEnvironment
         defaultDesktopEnvironment={applet.desktopEnvironment}
         desktopEnvironment={desktopEnvironment}
       >
-        <Boundary>
-          <AppletEngine {...props} applet={applet} composition={composition} />
-        </Boundary>
+        <AppletEngine {...props} applet={applet} />
       </AppletEnvironment>
     )
   }
@@ -47,16 +44,16 @@ export default function createAppletEngine(Applet, { composition } = {}) {
   OwnerAppletEngine.collectSettingsContributions = (...args) => (
     AppletEngine.collectSettingsContributions(...args)
   )
-  OwnerAppletEngine.create = (options) => AppletEngine.create({ composition, ...options })
+  OwnerAppletEngine.create = (options) => AppletEngine.create({ applet: Applet, desktopEnvironment: Applet.desktopEnvironment, ...options })
   OwnerAppletEngine.resolveRootApplet = (RootApplet, fallbackApplet = Applet) => (
-    AppletEngine.resolveRootApplet(RootApplet, fallbackApplet, composition?.rootDefaults)
+    AppletEngine.resolveRootApplet(RootApplet, fallbackApplet)
   )
   OwnerAppletEngine.use = () => AppletEngine.use()
   OwnerAppletEngine.useApplication = () => AppletEngine.useApplication()
   OwnerAppletEngine.useOptional = () => AppletEngine.useOptional()
   OwnerAppletEngine.useOwnership = () => AppletEngine.useOwnership()
   OwnerAppletEngine.useRootApplet = (RootApplet) => (
-    AppletEngine.useRootApplet(RootApplet, Applet, composition?.rootDefaults)
+    AppletEngine.useRootApplet(RootApplet, Applet)
   )
   OwnerAppletEngine.useState = (...args) => AppletEngine.useState(...args)
   OwnerAppletEngine.useWhichApplet = (options) => AppletEngine.useWhichApplet({ applet: Applet, ...options })

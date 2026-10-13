@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 import { act, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import createWindowManager from '../../window-manager/createWindowManager.js'
@@ -6,6 +6,36 @@ import createCompositor from '../createCompositor.js'
 import SurfaceComposer from './SurfaceComposer.jsx'
 
 describe('SurfaceComposer', () => {
+  it.each([false, true])('resets Application-local state on reassignment with context %s', contextual => {
+    const disposed = vi.fn()
+    function Application({ application }) {
+      const [initial] = useState(application.applicationId)
+      useEffect(() => () => disposed(application.applicationId), [])
+      return <output>{initial}</output>
+    }
+    const manager = createWindowManager()
+    const compositor = createCompositor({ windowManager: manager,
+      applicationRegistry: { Application }, surfaceComponentRegistry: { Surface: ({ children }) => <>{children}</> },
+      defaultSurfaceComponentName: 'Surface',
+    })
+    const open = parentWindowId => {
+      const window = manager.window.add({ window: manager.window.create({ parentWindowId }) })
+      const application = compositor.application.add({ application: compositor.application.create({ applicationName: 'Application' }) })
+      return compositor.surface.add({ surface: compositor.surface.create({ windowId: window.windowId, applicationId: application.applicationId }) })
+    }
+    const owner = open(null)
+    const surface = open(owner.windowId)
+    const replacement = compositor.application.add({ application: compositor.application.create({ applicationName: 'Application' }) })
+    const context = contextual ? createContext(null) : undefined
+    const view = render(<SurfaceComposer compositor={compositor} surfaceId={owner.surfaceId}
+      applicationContext={context} renderApplication={(Applet, props) => <Applet {...props} />} />)
+    try {
+      expect(view.container.querySelector('output').textContent).toBe(surface.applicationId)
+      act(() => compositor.surface.update({ surfaceId: surface.surfaceId, applicationId: replacement.applicationId }))
+      expect(view.container.querySelector('output').textContent).toBe(replacement.applicationId)
+      expect(disposed).toHaveBeenCalledWith(surface.applicationId)
+    } finally { view.unmount(); compositor.destroy() }
+  })
   it('reactively composes child surfaces without context', () => {
     let sequence = 0
     const createId = (kind) => `${kind}:${++sequence}`

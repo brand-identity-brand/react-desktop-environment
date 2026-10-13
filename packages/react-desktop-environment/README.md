@@ -64,6 +64,10 @@ records remain independent.
 
 `SurfaceComposer` receives its stable dependencies explicitly. It uses no
 context and subscribes directly to the child surfaces of the supplied surface.
+Its default traverses the whole tree. With `recursive={false}` it renders only
+immediate children, so Applet GUIs can each own their descendant presentation
+through this same composer. Application identity is retained for both registered
+components and custom rendering callbacks.
 
 ```jsx
 <SurfaceComposer
@@ -86,16 +90,15 @@ import { AppletEngine, AppletEnvironment, createAppletEngine } from 'react-deskt
 ```
 
 The [Applet runtime](./src/applet-engine/README.md) owns recursive registration,
-engine lifetime, Application state, resident Decks, checkpoints, and occurrence
-themes. Consumers supply their Applet definitions and root composition material.
-The definition binder and direct constructor share the same composition API and
-canonical React contexts. Resident admission is independent of resident supply.
+engine lifetime, Application state, resident Deck mechanics, checkpoints, and
+runtime contexts. Its definition binder and direct constructor accept no GUI
+composition. An Applet receives its Application and Surface under the supplied
+engine and composes its own GUI without configuring that engine.
 
 The [stock Applet UI](./src/ui/applet/README.md), exported from
-`react-desktop-environment/ui/applet`, supplies an interactive wireframe through
-the same composition API. Start with its `appletComposition` and replace visual
-material for a custom look. Applet behavior remains in AppletEngine; consumers
-building different behavior use the compositor primitives directly.
+`react-desktop-environment/ui/applet`, supplies `AppletPresentation`, reference
+and Deck frames, and theme utilities. A stock Applet composes these in its own
+rendering. Other GUIs use the same runtime through public records and operations.
 
 ## Checkpoint recovery
 
