@@ -10,6 +10,7 @@ import * as compositor from 'react-desktop-environment/compositor'
 import * as windowManager from 'react-desktop-environment/window-manager'
 import * as windowReact from 'react-desktop-environment/window-manager/react'
 import * as ui from 'react-desktop-environment/ui'
+import { appletComposition } from 'react-desktop-environment/ui/applet'
 import {
   AppletEngine,
   AppletStateStoreContext,
@@ -59,7 +60,7 @@ Notebook.meta = Object.freeze({
 Notebook.applets = Object.freeze({ note: Note })
 Notebook.recipes = Object.freeze([Object.freeze({ name: 'notes', addable: true, residents: [{ applet: 'note' }] })])
 Notebook.desktopEnvironment = environment
-const BoundEngine = createAppletEngine(Notebook)
+const BoundEngine = createAppletEngine(Notebook, { composition: appletComposition })
 assert.equal(BoundEngine.Runtime, AppletEngine)
 const root = createRoot(document.getElementById('root'))
 await act(async () => {
@@ -93,6 +94,13 @@ assert.equal(themeChanges, 1)
 unsubscribeTheme()
 const [deck] = currentEngine.compositor.surface.readChildren({ surfaceId: currentEngine.rootSurfaceId })
 assert.equal(deck.props.addable, true)
+const deckMenu = Array.from(document.querySelectorAll('button'))
+  .find((button) => button.textContent === 'Deck menu')
+await act(async () => { deckMenu.click() })
+assert.equal(currentEngine.appletState.read({ applicationId: deck.applicationId, stateName: 'menuOpen' }), true)
+assert.equal(deckMenu.getAttribute('aria-expanded'), 'true')
+await act(async () => { deckMenu.click() })
+assert.equal(currentEngine.appletState.read({ applicationId: deck.applicationId, stateName: 'menuOpen' }), false)
 await act(async () => { edit('retained') })
 await act(async () => {
   currentEngine.compositor.surface.update({ surfaceId: originalSurface.surfaceId, hidden: true })
@@ -104,7 +112,7 @@ const saved = currentEngine.checkpoint.capture()
 assert.equal(saved.snapshot.find(({ surfaceId }) => surfaceId === originalSurface.surfaceId).appletState.text, 'retained')
 currentEngine.checkpoint.release(saved)
 await act(async () => { root.unmount() })
-const restored = AppletEngine.create({ applet: Notebook, desktopEnvironment: environment, options: { initialState: saved.snapshot } })
+const restored = AppletEngine.create({ applet: Notebook, desktopEnvironment: environment, composition: appletComposition, options: { initialState: saved.snapshot } })
 assert.equal(restored.rootSurfaceId, originalEngine.rootSurfaceId)
 assert.equal(restored.compositor.surface.read({ surfaceId: originalSurface.surfaceId }).applicationId, originalApplicationId)
 const restoredRoot = createRoot(document.getElementById('root'))
@@ -161,4 +169,4 @@ try {
   console.error = originalError
 }
 dom.window.close()
-console.log('Packed ESM entries, independent Applet tree, shared React/context, identity, state, replacement adoption, checkpoint restoration, live consumer scheme material, and explicit recovery passed.')
+console.log('Packed ESM entries, stock Applet UI, independent Applet tree, shared React/context, identity, state, replacement adoption, checkpoint restoration, live consumer scheme material, and explicit recovery passed.')

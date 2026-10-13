@@ -14,6 +14,7 @@ export const appletEngineApi = Object.freeze([
   'useApplication',
   'useOptional',
   'useOwnership',
+  'useWhichApplet',
   'useRootApplet',
   'useState',
 ])
@@ -58,6 +59,7 @@ export default function createAppletEngine(Applet, { composition } = {}) {
     AppletEngine.useRootApplet(RootApplet, Applet, composition?.rootDefaults)
   )
   OwnerAppletEngine.useState = (...args) => AppletEngine.useState(...args)
+  OwnerAppletEngine.useWhichApplet = (options) => AppletEngine.useWhichApplet({ applet: Applet, ...options })
 
   return OwnerAppletEngine
 }

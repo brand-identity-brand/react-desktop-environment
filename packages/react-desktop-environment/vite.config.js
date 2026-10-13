@@ -25,6 +25,9 @@ export default defineConfig({
         ui: fileURLToPath(
           new URL('./src/ui/index.js', import.meta.url),
         ),
+        'ui-applet': fileURLToPath(
+          new URL('./src/ui/applet/index.js', import.meta.url),
+        ),
       },
       formats: ['es'],
       fileName: (_format, entryName) => `${entryName}.js`,

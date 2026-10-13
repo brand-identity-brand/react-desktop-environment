@@ -30,6 +30,10 @@
       "development": "./src/ui/index.js",
       "import": "./dist/ui.js"
     },
+    "./ui/applet": {
+      "development": "./src/ui/applet/index.js",
+      "import": "./dist/ui-applet.js"
+    },
     "./applet-engine": {
       "development": "./src/applet-engine/index.js",
       "import": "./dist/applet-engine.js"

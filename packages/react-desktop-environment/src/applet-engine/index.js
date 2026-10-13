@@ -23,3 +23,7 @@ export {
   useAppletTheme,
   useAppletThemeRoot,
 } from './AppletTheme.jsx'
+
+export { useWhichApplet } from './AppletEngine.jsx'
+export { resolveDeckProps } from './deckProps.js'
+export { constrainPresentationSize, minimumPresentationSize } from './presentationSize.js'

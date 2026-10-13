@@ -51,6 +51,119 @@ function tree({ addable = false } = {}) {
 }
 
 describe('independent Applet composition', () => {
+  it('renders the registered Applet with supplied records and inherited state without creating another occurrence', () => {
+    let received
+    let inheritedEngine
+    function Note(props) {
+      received = props
+      inheritedEngine = AppletEngine.use()
+      const [draft, setDraft] = AppletEngine.useState('draft', 'draft')
+      return <input aria-label="bound draft" value={draft} onChange={(event) => setDraft(event.target.value)} />
+    }
+    Note.meta = { applicationName: 'note' }
+    Note.applets = {}
+    Note.desktopEnvironment = environment
+    function Notebook() { return null }
+    Notebook.meta = { applicationName: 'notebook' }
+    Notebook.applets = { note: Note }
+    const engine = AppletEngine.create({ applet: Notebook, desktopEnvironment: environment })
+    engines.push(engine)
+    const application = engine.runtime.createApplicationInstance({ applicationName: 'notebook/note' })
+    const surface = engine.runtime.createReferenceSurface({ applicationId: application.applicationId, ownerSurfaceId: engine.rootSurfaceId })
+    const initialSurfaces = Object.keys(engine.compositor.getSnapshot().surfaces)
+    const view = render(<AppletEnvironment desktopEnvironment={environment}>
+      <AppletEngine applet={Notebook} engine={engine} />
+    </AppletEnvironment>)
+    expect(received.application).toBe(application)
+    expect(received.surface).toBe(surface)
+    expect(inheritedEngine).toBe(engine)
+    expect(received.window).toBe(surface.window)
+    expect(received.controls).toBe(engine.compositor.surface.readControls({ surfaceId: surface.surfaceId }))
+    fireEvent.change(view.getByRole('textbox', { name: 'bound draft' }), { target: { value: 'edited' } })
+    expect(engine.appletState.read({ applicationId: application.applicationId, stateName: 'draft' })).toBe('edited')
+    expect(Object.keys(engine.compositor.getSnapshot().surfaces)).toEqual(initialSurfaces)
+  })
+
+  it.each([false, true])('attaches the Applet directly and disposes only its owned runtime (injected=%s)', async (injected) => {
+    const tracking = trackedEnvironment()
+    let received
+    let ownsEngine
+    function Note(props) {
+      received = Binding.useWhichApplet(props)
+      ownsEngine = Binding.useOwnership()
+      const { surface } = received
+      return surface ? <output>{surface.surfaceId}</output> : null
+    }
+    Note.meta = { applicationName: 'note' }
+    Note.applets = {}
+    Note.desktopEnvironment = tracking.environment
+    const Binding = createAppletEngine(Note)
+    function Notebook() { return null }
+    Notebook.meta = { applicationName: 'notebook' }
+    Notebook.applets = { note: Note }
+    const engine = injected ? AppletEngine.create({ applet: Notebook, desktopEnvironment: tracking.environment }) : undefined
+    if (engine) engines.push(engine)
+    const application = engine?.runtime.createApplicationInstance({ applicationName: 'notebook/note' })
+    const view = render(<Binding engine={engine}><Note application={application} /></Binding>)
+    const runtime = received.engine
+    if (injected) {
+      expect(runtime).toBe(engine)
+      expect(received.application).toBe(application)
+    }
+    expect(ownsEngine).toBe(!injected)
+    expect(received.surface.applicationId).toBe(received.application.applicationId)
+    expect(view.getByRole('status').textContent).toBe(received.surface.surfaceId)
+    view.unmount()
+    await act(async () => {})
+    expect(tracking.destroy).toHaveBeenCalledTimes(injected ? 0 : 1)
+  })
+
+  it('resets a directly owned runtime once and replaces its descendants even when record IDs repeat', async () => {
+    const tracking = trackedEnvironment()
+    let occurrence
+    let releaseReset
+    let sequence = 0
+    const beforeResetRootApplet = vi.fn(() => new Promise((resolve) => { releaseReset = resolve }))
+    const observeEngine = vi.fn()
+    const createId = (kind) => `${kind}:${sequence++}`
+    const options = { beforeResetRootApplet, createId }
+    function Note(props) {
+      occurrence = Binding.useWhichApplet(props)
+      return <Draft />
+    }
+    Note.meta = { applicationName: 'note' }
+    Note.applets = {}
+    Note.desktopEnvironment = tracking.environment
+    const Binding = createAppletEngine(Note)
+    function Draft() {
+      const [value, setValue] = Binding.useState('draft', 'draft')
+      const [local, setLocal] = useState('initial')
+      return <input aria-label="reset draft" data-local={local} value={value} onChange={(event) => {
+        setValue(event.target.value)
+        setLocal('edited')
+      }} />
+    }
+    const view = render(<Binding options={options}><Note /></Binding>)
+    const previousEngine = occurrence.engine
+    fireEvent.change(view.getByRole('textbox'), { target: { value: 'edited' } })
+    view.rerender(<Binding options={options} onEngine={observeEngine}><Note /></Binding>)
+    expect(observeEngine).toHaveBeenCalledExactlyOnceWith(previousEngine)
+    view.rerender(<Binding options={options}><Note /></Binding>)
+    expect(view.getByRole('textbox').value).toBe('edited')
+    expect(view.getByRole('textbox').dataset.local).toBe('edited')
+    const first = previousEngine.checkpoint.reset()
+    const second = previousEngine.checkpoint.reset()
+    expect(first).toBe(second)
+    expect(beforeResetRootApplet).toHaveBeenCalledOnce()
+    await act(async () => { sequence = 0; releaseReset(); await first })
+    expect(occurrence.engine).not.toBe(previousEngine)
+    expect(view.getByRole('textbox').value).toBe('draft')
+    expect(view.getByRole('textbox').dataset.local).toBe('initial')
+    expect(occurrence.engine.rootSurfaceId).toBe(previousEngine.rootSurfaceId)
+    expect(tracking.destroy).toHaveBeenCalledOnce()
+    expect(await previousEngine.checkpoint.reset()).toBe(false)
+  })
+
   it('supplies independent resident admission and retains residents with ordinary members', () => {
     const applet = tree({ addable: true })
     const engine = AppletEngine.create({ applet, desktopEnvironment: environment })
@@ -141,7 +254,6 @@ describe('independent Applet composition', () => {
     expect(mounted.container.querySelector('[data-runtime-provider]')).not.toBeNull()
     expect(deckModels[0]).toMatchObject({ addable: false, menuOpen: false, unmountable: false })
     expect(deckModels[0].composition.childSurfaces).toHaveLength(1)
-    expect(typeof deckModels[0].departChild).toBe('function')
     mounted.unmount()
     await act(async () => {})
     expect(destroy).not.toHaveBeenCalled()

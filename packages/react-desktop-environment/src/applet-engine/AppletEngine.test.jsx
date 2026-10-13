@@ -8,6 +8,7 @@ import * as ui from '../ui/index.js'
 import * as windowManager from '../window-manager/index.js'
 import AppletEngine from './AppletEngine.jsx'
 import AppletEnvironment from './AppletEnvironment.jsx'
+import Deck from './Deck.jsx'
 import {
   DEFAULT_APPLET_THEME,
   useAppletTheme,
@@ -679,5 +680,101 @@ describe('engine Deck recipes and residence', () => {
     expect(residents.find(({ application }) => application.applicationName === 'root/workspace/child').surfaceId)
       .not.toBe(missing.surfaceId)
     expect(restored.engine.checkpoint.isDirty()).toBe(false)
+  })
+})
+
+describe('Applet stack and host operations', () => {
+  function fixture() {
+    const child = defineApplet('child')
+    const root = defineApplet('root', { child, deck: Deck })
+    const engine = AppletEngine.create({ applet: root, desktopEnvironment })
+    const open = (applicationName = 'root/child', ownerSurfaceId = engine.rootSurfaceId, surfaceProps) => {
+      const application = engine.runtime.createApplicationInstance({ applicationName })
+      return engine.runtime.createReferenceSurface({ applicationId: application.applicationId, ownerSurfaceId, surfaceProps })
+    }
+    const read = (surfaceId) => engine.compositor.surface.read({ surfaceId })
+    const controls = (surfaceId) => engine.compositor.surface.readControls({ surfaceId })
+    return { engine, open, read, controls }
+  }
+
+  it.each(['deck', 'root/deck'])('reveals the promoted predecessor in %s and leaves it visible when a buried child closes', (applicationName) => {
+    const { engine, open, read, controls } = fixture()
+    try {
+      const deck = open(applicationName)
+      const [first, second, third] = [0, 1, 2].map((order) => open('root/child', deck.surfaceId, { order }))
+      controls(second.surfaceId).activate()
+      controls(second.surfaceId).hide()
+      engine.runtime.selectChild({ surfaceId: deck.surfaceId, childSurfaceId: second.surfaceId })
+      expect(read(second.surfaceId).hidden).toBe(false)
+      controls(first.surfaceId).focus()
+      engine.runtime.selectChild({ surfaceId: deck.surfaceId, childSurfaceId: second.surfaceId })
+      expect(read(second.surfaceId).zIndex).toBeGreaterThan(read(first.surfaceId).zIndex)
+      const visible = engine.checkpoint.getSnapshot()
+      engine.runtime.selectChild({ surfaceId: deck.surfaceId, childSurfaceId: second.surfaceId })
+      expect(engine.checkpoint.getSnapshot()).toEqual(visible)
+      controls(third.surfaceId).activate()
+      controls(third.surfaceId).close()
+      expect(read(deck.surfaceId).selectedChildSurfaceId).toBe(second.surfaceId)
+      expect(engine.runtime.presentedSurface({ surfaceId: deck.surfaceId }).surfaceId).toBe(second.surfaceId)
+      controls(first.surfaceId).close()
+      expect(read(deck.surfaceId).selectedChildSurfaceId).toBe(second.surfaceId)
+      const saved = engine.checkpoint.getSnapshot()
+      const restored = AppletEngine.create({ applet: engine.rootApplet, desktopEnvironment, options: { initialState: saved } })
+      try {
+        expect(restored.runtime.readSelectedChild({ surfaceId: deck.surfaceId }).surfaceId).toBe(second.surfaceId)
+      } finally { restored.destroy() }
+    } finally { engine.destroy() }
+  })
+
+  it('keeps fullscreen in the composed host and reveals that host’s mounted stack during a peel', () => {
+    const { engine, open, read, controls } = fixture()
+    try {
+      const host = open('deck')
+      const otherHost = open()
+      const first = open('deck', host.surfaceId)
+      const second = open('deck', host.surfaceId)
+      engine.runtime.activateWorkspaceSurface({ surfaceId: otherHost.surfaceId })
+      controls(first.surfaceId).fullscreen()
+      controls(second.surfaceId).fullscreen()
+      expect(read(second.surfaceId).window.parentWindowId).toBe(host.windowId)
+      const peel = engine.runtime.beginPeel({ surfaceId: second.surfaceId, ownerSurfaceId: host.surfaceId })
+      expect(read(host.surfaceId).selectedChildSurfaceId).toBe(first.surfaceId)
+      expect(read(second.surfaceId).fullscreen).toBe(false)
+      peel.cancel()
+      expect(read(host.surfaceId).selectedChildSurfaceId).toBe(second.surfaceId)
+      expect(read(second.surfaceId).fullscreen).toBe(true)
+    } finally { engine.destroy() }
+  })
+
+  it('closes emptied ancestors after departure, but retains initially empty and held Decks', async () => {
+    const { engine, open, read, controls } = fixture()
+    try {
+      const initiallyEmpty = open('deck')
+      const outer = open('deck')
+      const inner = open('deck', outer.surfaceId)
+      const child = open('root/child', inner.surfaceId)
+      await Promise.resolve()
+      expect(read(initiallyEmpty.surfaceId)).toBeDefined()
+      const options = { surfaceId: child.surfaceId, ownerSurfaceId: engine.rootSurfaceId }
+      const cancelled = engine.runtime.beginPeel(options)
+      await Promise.resolve()
+      expect(read(inner.surfaceId)).toBeDefined()
+      cancelled.cancel()
+      await Promise.resolve()
+      expect(read(child.surfaceId).window.parentWindowId).toBe(inner.windowId)
+      const retained = engine.runtime.beginPeel(options)
+      retained.retain({ geometry: { position: { x: 10, y: 20 }, size: { width: 300, height: 200 } } })
+      await Promise.resolve()
+      expect(read(inner.surfaceId)).toBeUndefined()
+      expect(read(outer.surfaceId)).toBeUndefined()
+      expect(read(child.surfaceId)).toBeDefined()
+      expect(read(initiallyEmpty.surfaceId)).toBeDefined()
+      controls(child.surfaceId).close()
+      const removedDeck = open('deck')
+      const removedChild = open('root/child', removedDeck.surfaceId)
+      engine.compositor.surface.remove({ surfaceId: removedDeck.surfaceId })
+      expect(read(removedChild.surfaceId)).toBeUndefined()
+      expect(engine.compositor.application.read({ applicationId: removedChild.applicationId })).toBeUndefined()
+    } finally { engine.destroy() }
   })
 })

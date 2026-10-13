@@ -1,8 +1,6 @@
-import React, {
+import {
   useCallback,
-  useEffect,
   useMemo,
-  useRef,
   useSyncExternalStore,
 } from 'react'
 
@@ -20,6 +18,7 @@ function orderChildSurfaces(childSurfaces) {
 
 export default function useChildSurfaceComposition({
   engine,
+  fullscreen,
   onSelectedSurfaceChange,
   ownerSurfaceId,
 }) {
@@ -34,7 +33,7 @@ export default function useChildSurfaceComposition({
     [engine, ownerSurfaceId],
   )
   const readChildSurfaces = useCallback(
-    () => engine?.compositor && ownerSurfaceId
+    () => engine?.compositor?.surface.read({ surfaceId: ownerSurfaceId })
       ? engine.compositor.surface.readChildren({ surfaceId: ownerSurfaceId })
       : emptySurfaces,
     [engine, ownerSurfaceId],
@@ -50,24 +49,19 @@ export default function useChildSurfaceComposition({
     readChildSurfaces,
   )
   const orderedChildSurfaces = useMemo(
-    () => orderChildSurfaces(childSurfaces),
-    [childSurfaces],
+    () => orderChildSurfaces(fullscreen === undefined
+      ? childSurfaces
+      : childSurfaces.filter((surface) => surface.fullscreen === fullscreen)),
+    [childSurfaces, fullscreen],
   )
   const childSurfaceIds = useMemo(
     () => orderedChildSurfaces.map(({ surfaceId }) => surfaceId),
     [orderedChildSurfaces],
   )
-  const retainedSelection = useRef(null)
-  const recordedSelection = ownerSurface?.selectedChildSurfaceId
-  const candidateId = recordedSelection ?? retainedSelection.current
-  const candidate = candidateId
-    ? engine?.compositor?.surface.read({ surfaceId: candidateId })
+  const selectedSurface = ownerSurface
+    ? engine.runtime.readSelectedChild({ surfaceId: ownerSurfaceId, fullscreen })
     : null
-  const selectedSurfaceId = childSurfaceIds.includes(candidateId)
-    || candidate?.props?.resident?.containerSurfaceId === ownerSurfaceId
-    ? candidateId
-    : childSurfaceIds[0] ?? null
-  retainedSelection.current = selectedSurfaceId
+  const selectedSurfaceId = selectedSurface?.surfaceId ?? null
   const selectSurface = useCallback((surfaceId) => {
     if (!engine?.compositor || !ownerSurfaceId) return null
     const currentChildSurfaces = engine.compositor.surface.readChildren({
@@ -75,27 +69,16 @@ export default function useChildSurfaceComposition({
     })
     if (!currentChildSurfaces.some((surface) => (
       surface.surfaceId === surfaceId
+      && (fullscreen === undefined || surface.fullscreen === fullscreen)
     ))) return null
 
-    const selectedOwner = engine.compositor.surface.readControls({ surfaceId })
-      .activate()
-    onSelectedSurfaceChange?.(surfaceId)
-    return selectedOwner
-  }, [engine, onSelectedSurfaceChange, ownerSurfaceId])
-
-  useEffect(() => {
-    if (
-      !ownerSurface
-      || !selectedSurfaceId
-      || !childSurfaceIds.includes(selectedSurfaceId)
-      || selectedSurfaceId === ownerSurface.selectedChildSurfaceId
-    ) return
     engine.runtime.selectChild({
-      childSurfaceId: selectedSurfaceId,
       surfaceId: ownerSurfaceId,
-      supply: { surfaceId: ownerSurfaceId },
+      childSurfaceId: surfaceId,
     })
-  }, [childSurfaceIds, engine, ownerSurface, ownerSurfaceId, selectedSurfaceId])
+    onSelectedSurfaceChange?.(surfaceId)
+    return engine.compositor.surface.read({ surfaceId })
+  }, [engine, fullscreen, onSelectedSurfaceChange, ownerSurfaceId])
 
   return {
     childSurfaceIds,

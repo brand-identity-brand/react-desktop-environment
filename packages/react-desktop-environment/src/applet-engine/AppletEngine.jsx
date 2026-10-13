@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -25,7 +26,9 @@ import {
   resolveAppletTheme,
   validateAppletScheme,
 } from './AppletTheme.jsx'
-import presentedSurface from './presentedSurface.js'
+import presentedSurface, { isDeckSurface, surfacePlacementOwnerId } from './presentedSurface.js'
+import { constrainPresentationSize, minimumPresentationSize } from './presentationSize.js'
+import createSurfaceTransfer from './surfaceTransfer.js'
 
 const AppletEngineContext = createContext(null)
 const AppletEngineOwnershipContext = createContext(false)
@@ -406,13 +409,6 @@ function ReferenceSurface({ children, surface }) {
   )
 }
 
-function constrainPresentationSize(size, minimumSize) {
-  if (!size) return null
-  const width = Math.max(size.width, minimumSize.width)
-  const height = Math.max(size.height, minimumSize.height)
-  return width === size.width && height === size.height ? size : { width, height }
-}
-
 function constructAppletRuntime({
   applet,
   adoption,
@@ -649,13 +645,6 @@ function constructAppletRuntime({
         return compositor.surface.read({ surfaceId })
       }
       const fullscreen = (geometry) => {
-        const current = compositor.surface.read({ surfaceId })
-        if (
-          activeWorkspaceSurfaceId
-          && activeWorkspaceSurfaceId !== current?.props?.ownerSurfaceId
-        ) {
-          reparent(activeWorkspaceSurfaceId)
-        }
         controls.fullscreen(geometry)
         const fullscreenSurface = compositor.surface.read({ surfaceId })
         const ownerSurfaceId = fullscreenSurface?.props?.ownerSurfaceId
@@ -683,10 +672,7 @@ function constructAppletRuntime({
         notifyCheckpoint()
         return result
       }
-      const selectChild = (...args) => {
-        fieldSupplies.delete(`${surfaceId}:selectedChildSurfaceId`)
-        return controls.selectChild(...args)
-      }
+      const selectChild = (childSurfaceId) => runtime.selectChild({ surfaceId, childSurfaceId })
       const move = (...args) => {
         fieldSupplies.delete(`${surfaceId}:position`)
         return controls.move(...args)
@@ -1055,7 +1041,105 @@ function constructAppletRuntime({
       ...cleanEntries.filter((candidate) => candidate.surfaceId !== surfaceId), entry,
     ]
   }
+  const retainedDecks = new Map()
+  const emptyDecks = new Set()
+  let emptyDecksScheduled = false
+  const queryEngine = () => ({ compositor, runtime })
+  const readChildStack = ({ surfaceId, fullscreen } = {}) => {
+    if (!compositor.surface.read({ surfaceId })) return []
+    const selected = compositor.surface.read({ surfaceId }).selectedChildSurfaceId
+    return compositor.surface.readChildren({ surfaceId })
+      .filter((surface) => fullscreen === undefined || surface.fullscreen === fullscreen)
+      .toSorted((first, second) => (
+        first.surfaceId === selected ? -1 : second.surfaceId === selected ? 1 : second.zIndex - first.zIndex
+      ))
+  }
+  const readSelectedChild = ({ surfaceId, fullscreen } = {}) => {
+    const owner = compositor.surface.read({ surfaceId })
+    if (!owner) return null
+    const held = [...(retainedDecks.get(surfaceId) ?? [])]
+      .find(({ selectedSurfaceId }) => selectedSurfaceId)
+    const resident = held && compositor.surface.read({ surfaceId: held.selectedSurfaceId })
+    if (resident?.props?.resident?.containerSurfaceId === surfaceId) return resident
+    const selected = compositor.surface.readSelectedChild({ surfaceId })
+    if (selected && (fullscreen === undefined || selected.fullscreen === fullscreen)) return selected
+    return readChildStack({ surfaceId, fullscreen })[0] ?? null
+  }
+  const reconcileSelections = (previous) => {
+    for (const owner of Object.values(compositor.getSnapshot().surfaces)) {
+      const oldOwner = previous?.surfaces[owner.surfaceId]
+      const oldSelection = previous?.surfaces[oldOwner?.selectedChildSurfaceId]
+      const oldChild = oldSelection && compositor.surface.read({ surfaceId: oldSelection.surfaceId })
+      const departed = oldSelection && (
+        !oldChild || oldChild.window.parentWindowId !== owner.windowId
+        || (oldSelection.fullscreen && !oldChild.fullscreen)
+      )
+      const arrived = compositor.surface.readChildren({ surfaceId: owner.surfaceId }).some((child) => (
+        previous?.surfaces[child.surfaceId]?.window.parentWindowId !== owner.windowId
+      ))
+      if (!departed && (owner.selectedChildSurfaceId != null || !arrived)) continue
+      const mountedDeparture = departed && oldSelection.fullscreen
+      const selected = readSelectedChild({
+        surfaceId: owner.surfaceId,
+        ...(mountedDeparture ? { fullscreen: true } : {}),
+      })
+      if (selected && selected.window.parentWindowId !== owner.windowId) continue
+      const childSurfaceId = selected?.surfaceId ?? null
+      if (childSurfaceId === owner.selectedChildSurfaceId) continue
+      compositor.surface.selectChild({ surfaceId: owner.surfaceId, childSurfaceId })
+      if (departed || retainedDecks.has(owner.surfaceId)) fieldSupplies.delete(`${owner.surfaceId}:selectedChildSurfaceId`)
+      else suppliedField(owner.surfaceId, 'selectedChildSurfaceId', childSurfaceId, { surfaceId: owner.surfaceId })
+    }
+  }
+  const flushEmptyDecks = () => {
+    emptyDecksScheduled = false
+    if (destroyed) return
+    for (const surfaceId of emptyDecks) {
+      if (retainedDecks.get(surfaceId)?.size) continue
+      emptyDecks.delete(surfaceId)
+      const surface = compositor.surface.read({ surfaceId })
+      if (!surface || !isDeckSurface({ engine: queryEngine(), surface })
+        || Array.isArray(surface.props?.recipe?.residents)
+        || compositor.surface.readChildren({ surfaceId }).length) continue
+      compositor.surface.readControls({ surfaceId }).close()
+    }
+  }
+  const scheduleEmptyDecks = () => {
+    if (emptyDecksScheduled || destroyed) return
+    emptyDecksScheduled = true
+    queueMicrotask(flushEmptyDecks)
+  }
+  const retainDeck = (surfaceId, { selectedSurfaceId } = {}) => {
+    const holds = retainedDecks.get(surfaceId) ?? new Set()
+    const hold = { selectedSurfaceId }
+    holds.add(hold)
+    retainedDecks.set(surfaceId, holds)
+    return () => {
+      if (!holds.delete(hold)) return
+      if (!holds.size) retainedDecks.delete(surfaceId)
+      reconcileResidence()
+      scheduleEmptyDecks()
+    }
+  }
+  let surfaceTransfer
   const runtime = Object.freeze({
+    readChildStack,
+    readSelectedChild,
+    presentedSurface({ surfaceId }) {
+      return presentedSurface({ engine: queryEngine(), surface: compositor.surface.read({ surfaceId }) })
+    },
+    isDeckSurface({ surfaceId }) {
+      return isDeckSurface({ engine: queryEngine(), surface: compositor.surface.read({ surfaceId }) })
+    },
+    surfacePlacementOwnerId({ surfaceId }) {
+      return surfacePlacementOwnerId({ engine: queryEngine(), surface: compositor.surface.read({ surfaceId }) })
+    },
+    beginPeel(options) {
+      return surfaceTransfer.beginPeel(options)
+    },
+    mergeDeck(options) {
+      return surfaceTransfer.mergeDeck(options)
+    },
     activeWorkspaceSurface() {
       return activeWorkspaceSurfaceId
         ? compositor.surface.read({ surfaceId: activeWorkspaceSurfaceId })
@@ -1085,10 +1169,18 @@ function constructAppletRuntime({
       const selected = compositor.surface.read({ surfaceId: surface?.selectedChildSurfaceId })
       if (!eligibleField(surfaceId, 'selectedChildSurfaceId', surface?.selectedChildSurfaceId,
         supply, !selected || selected.window.parentWindowId !== surface.windowId)) return surface
-      const result = compositor.surface.selectChild({ surfaceId, childSurfaceId })
+      const alreadyVisible = selected && !selected.hidden && !compositor.surface.readChildren({ surfaceId })
+        .some((child) => child.fullscreen === selected.fullscreen && child.zIndex > selected.zIndex)
+      if (!supply && surface.selectedChildSurfaceId === childSurfaceId
+        && (childSurfaceId == null || alreadyVisible)) return surface
+      if (supply || childSurfaceId == null) {
+        compositor.surface.selectChild({ surfaceId, childSurfaceId })
+      } else {
+        compositor.surface.activateChild({ surfaceId, childSurfaceId })
+      }
       suppliedField(surfaceId, 'selectedChildSurfaceId', childSurfaceId, supply)
       notifyCheckpoint()
-      return result
+      return compositor.surface.read({ surfaceId })
     },
     selectionSupply({ surfaceId }) {
       const current = compositor.surface.read({ surfaceId })?.selectedChildSurfaceId
@@ -1306,6 +1398,16 @@ function constructAppletRuntime({
 
   })
 
+  surfaceTransfer = createSurfaceTransfer({
+    compositor,
+    runtime,
+    retainDeck,
+    restoreSelection({ surfaceId, childSurfaceId }) {
+      fieldSupplies.delete(`${surfaceId}:selectedChildSurfaceId`)
+      return compositor.surface.selectChild({ surfaceId, childSurfaceId })
+    },
+  })
+
   const restoredResidence = new Set((restoredSurfaceState ?? []).map(({ surfaceId }) => surfaceId))
   let reconcilingResidence = false
   reconcileResidence = () => {
@@ -1418,10 +1520,8 @@ function constructAppletRuntime({
       if (!saved.size || saved.fullscreen || saved.surfaceComponentName !== 'reference') continue
       const surface = compositor.surface.read({ surfaceId: saved.surfaceId })
       if (!surface) continue
-      const presented = presentedSurface({ engine: sizingEngine, surface })
-      const definition = resolveApplicationNode(presented.application)?.Applet
       const size = constrainPresentationSize(saved.size,
-        definition?.meta.minimumSize ?? { width: 240, height: 180 })
+        minimumPresentationSize({ engine: sizingEngine, surface }))
       if (size && !equalValue(surface.size, size)) {
         compositor.surface.update({ surfaceId: surface.surfaceId, size })
       }
@@ -1594,101 +1694,81 @@ function constructAppletRuntime({
 
   })
 
-  let previousSurfaceIds = new Set(
-    Object.keys(compositor.getSnapshot().surfaces),
-  )
-  let previousSurfaceApplications = new Map(
-    Object.values(compositor.getSnapshot().surfaces).map((surface) => [
-      surface.surfaceId,
-      surface.applicationId,
-    ]),
-  )
-  let previousChildSurfaceIds = new Map(
-    [...previousSurfaceIds].map((surfaceId) => [
-      surfaceId,
-      compositor.surface.readChildren({ surfaceId })
-        .map((surface) => surface.surfaceId),
-    ]),
-  )
-  let previousSelections = new Map(
-    Object.values(compositor.getSnapshot().surfaces).map((surface) => [
-      surface.surfaceId,
-      surface.selectedChildSurfaceId,
-    ]),
-  )
+  let previousSnapshot = compositor.getSnapshot()
+  let reconcilingComposition = false
+  let compositionPending = false
   const unsubscribeCompositor = compositor.subscribe(() => {
-    const surfaces = Object.values(compositor.getSnapshot().surfaces)
-    const surfaceIds = new Set(surfaces.map(({ surfaceId }) => surfaceId))
-    for (const [key, declaration] of fieldSupplies) {
-      const field = key.slice(key.lastIndexOf(':') + 1)
-      const surfaceId = key.slice(0, key.lastIndexOf(':'))
-      const surface = surfaces.find((candidate) => candidate.surfaceId === surfaceId)
-      const ownerAlive = declaration.supply.surfaceId
-        ? surfaceIds.has(declaration.supply.surfaceId)
-        : surfaces.some((candidate) => candidate.applicationId === declaration.supply.applicationId)
-      const value = field === 'activeWorkspace' ? activeWorkspaceSurfaceId : readField(surface, field)
-      if (!surface || !ownerAlive || !equalValue(value, declaration.value)) fieldSupplies.delete(key)
+    if (reconcilingComposition) {
+      compositionPending = true
+      notifyCheckpoint()
+      return
     }
-    const removedSurfaceIds = [...previousSurfaceIds].filter(
-      (surfaceId) => !surfaceIds.has(surfaceId),
-    )
-    const applicationIds = new Set(surfaces.map(({ applicationId }) => applicationId))
-    const endedApplicationIds = new Set(removedSurfaceIds
-      .map((surfaceId) => previousSurfaceApplications.get(surfaceId))
-      .filter((applicationId) => !applicationIds.has(applicationId)))
-    if (removedSurfaceIds.length) {
-      applicationCleanupDirty = true
+    reconcilingComposition = true
+    try {
+      do {
+        compositionPending = false
+        const current = compositor.getSnapshot()
+        const previous = previousSnapshot
+        previousSnapshot = current
+        const surfaces = Object.values(current.surfaces)
+        const previousSurfaces = Object.values(previous.surfaces)
+        const removed = previousSurfaces.filter(({ surfaceId }) => !current.surfaces[surfaceId])
+        const applicationIds = new Set(surfaces.map(({ applicationId }) => applicationId))
+        const endedApplications = new Set(removed.map(({ applicationId }) => applicationId)
+          .filter((applicationId) => current.applications[applicationId] && !applicationIds.has(applicationId)))
+        for (const applicationId of endedApplications) {
+          appletState.endApplicationState({ applicationId })
+        }
+        for (const previousChild of previousSurfaces) {
+          const child = current.surfaces[previousChild.surfaceId]
+          if (child?.window.parentWindowId === previousChild.window.parentWindowId) continue
+          const parent = surfaces.find(({ windowId }) => windowId === previousChild.window.parentWindowId)
+          if (parent && isDeckSurface({ engine: queryEngine(), surface: parent })
+            && !compositor.surface.readChildren({ surfaceId: parent.surfaceId }).length) {
+            emptyDecks.add(parent.surfaceId)
+          }
+        }
+        for (const [key, declaration] of fieldSupplies) {
+          const field = key.slice(key.lastIndexOf(':') + 1)
+          const surfaceId = key.slice(0, key.lastIndexOf(':'))
+          const surface = current.surfaces[surfaceId]
+          const ownerAlive = declaration.supply.surfaceId
+            ? current.surfaces[declaration.supply.surfaceId]
+            : applicationIds.has(declaration.supply.applicationId)
+          const value = field === 'activeWorkspace' ? activeWorkspaceSurfaceId : readField(surface, field)
+          if (!surface || !ownerAlive || !equalValue(value, declaration.value)) fieldSupplies.delete(key)
+        }
+        const removedWindows = new Set(removed.map(({ windowId }) => windowId))
+        const pendingWindows = [...removedWindows]
+        while (pendingWindows.length) {
+          const parentWindowId = pendingWindows.pop()
+          for (const child of previousSurfaces) {
+            if (child.window.parentWindowId !== parentWindowId || removedWindows.has(child.windowId)) continue
+            removedWindows.add(child.windowId)
+            pendingWindows.push(child.windowId)
+            if (compositor.surface.read({ surfaceId: child.surfaceId })) {
+              compositor.surface.readControls({ surfaceId: child.surfaceId }).close()
+            }
+          }
+        }
+        if (removed.length) {
+          applicationCleanupDirty = true
+          collectUnreferencedApplications()
+        }
+        reconcileResidence()
+        reconcileSelections(previous)
+        if (emptyDecks.size) scheduleEmptyDecks()
+      } while (compositionPending)
+    } finally {
+      reconcilingComposition = false
+      notifyCheckpoint()
     }
-    const selectionChanged = surfaces.some((surface) => (
-      previousSelections.get(surface.surfaceId)
-      !== surface.selectedChildSurfaceId
-      && surface.selectedChildSurfaceId != null
-    ))
-    const descendantSurfaceIds = new Set()
-    const pendingRemovedSurfaceIds = [...removedSurfaceIds]
-    while (pendingRemovedSurfaceIds.length) {
-      const parentSurfaceId = pendingRemovedSurfaceIds.pop()
-      for (const childSurfaceId of (
-        previousChildSurfaceIds.get(parentSurfaceId) ?? []
-      )) {
-        if (descendantSurfaceIds.has(childSurfaceId)) continue
-        descendantSurfaceIds.add(childSurfaceId)
-        pendingRemovedSurfaceIds.push(childSurfaceId)
-      }
-    }
-    previousSurfaceIds = surfaceIds
-    previousSurfaceApplications = new Map(surfaces.map((surface) => [
-      surface.surfaceId,
-      surface.applicationId,
-    ]))
-    previousChildSurfaceIds = new Map(surfaces.map(({ surfaceId }) => [
-      surfaceId,
-      compositor.surface.readChildren({ surfaceId })
-        .map((surface) => surface.surfaceId),
-    ]))
-    previousSelections = new Map(surfaces.map((surface) => [
-      surface.surfaceId,
-      surface.selectedChildSurfaceId,
-    ]))
-    for (const applicationId of endedApplicationIds) {
-      appletState.endApplicationState({ applicationId })
-    }
-    for (const descendantSurfaceId of descendantSurfaceIds) {
-      if (!surfaceIds.has(descendantSurfaceId)) continue
-      compositor.surface.readControls({
-        surfaceId: descendantSurfaceId,
-      }).close()
-    }
-    if (removedSurfaceIds.length || selectionChanged) {
-      collectUnreferencedApplications()
-    }
-    reconcileResidence()
-    notifyCheckpoint()
   })
 
   return Object.freeze({
     destroy() {
       if (destroyed) return
+      surfaceTransfer.destroy()
       destroyed = true
       unsubscribeCompositor()
       unsubscribeAppletState()
@@ -1696,6 +1776,8 @@ function constructAppletRuntime({
       themeCache.clear()
       themeDeclarations.clear()
       checkpointListeners.clear()
+      retainedDecks.clear()
+      emptyDecks.clear()
       compositor.destroy()
     },
     appletState,
@@ -1719,99 +1801,109 @@ function createAppletEngine({ applet, composition, desktopEnvironment, options, 
   return constructAppletRuntime({ applet, composition, desktopEnvironment, options, resetRootApplet, rootApplet, scheme })
 }
 
-function AppletEngineRuntime({
+export default function AppletEngine({
   RootApplet,
   applet,
   children,
   composition,
+  desktopEnvironment: suppliedDesktopEnvironment,
   dnd,
-  engine,
+  engine: suppliedEngine,
   onEngine,
   options,
-  resetRootApplet,
   scheme,
 }) {
   const inheritedEngine = useContext(AppletEngineContext)?.engine ?? null
-  const desktopEnvironment = AppletEnvironment.use()
-  const ownsEngine = !engine && !inheritedEngine
-  const hostsRuntime = !inheritedEngine || Boolean(engine && engine !== inheritedEngine)
-  const [ownedEngine] = useState(() => ownsEngine
-    ? createAppletEngine({
-        applet,
-        composition,
-        desktopEnvironment,
-        options,
-        resetRootApplet,
-        rootApplet: RootApplet,
-        scheme,
-      })
-    : null)
-  const resolvedEngine = engine ?? inheritedEngine ?? ownedEngine
-  const mountedEffects = useRef(0)
-  const destroyedEngine = useRef(false)
-
-  if (!resolvedEngine) {
-    throw new TypeError('AppletEngine requires an engine')
-  }
-  const selectedScheme = useSyncExternalStore(
-    resolvedEngine.runtime.subscribeTheme,
-    resolvedEngine.runtime.getScheme,
-    resolvedEngine.runtime.getScheme,
-  )
-  const engineContext = useMemo(() => ({
-    engine: resolvedEngine,
-    scheme: selectedScheme,
-  }), [resolvedEngine, selectedScheme])
+  const inheritedDesktopEnvironment = AppletEnvironment.use()
+  const desktopEnvironment = suppliedDesktopEnvironment
+    ?? suppliedEngine?.desktopEnvironment ?? inheritedEngine?.desktopEnvironment
+    ?? inheritedDesktopEnvironment ?? applet?.desktopEnvironment
+  if (!desktopEnvironment) throw new TypeError('AppletEngine requires a desktop environment')
+  const ownsEngine = !suppliedEngine && !inheritedEngine
+  const hostsRuntime = !inheritedEngine || Boolean(suppliedEngine && suppliedEngine !== inheritedEngine)
+  const [runtimeRevision, setRuntimeRevision] = useState(0)
+  const activeRuntimeRevision = useRef(runtimeRevision)
+  const resetOperation = useRef(null)
+  activeRuntimeRevision.current = runtimeRevision
+  const resetRootApplet = useCallback(({ beforeResetRootApplet } = {}) => {
+    if (activeRuntimeRevision.current !== runtimeRevision) return Promise.resolve(false)
+    if (resetOperation.current?.runtimeRevision === runtimeRevision) {
+      return resetOperation.current.promise
+    }
+    let operation
+    operation = (async () => {
+      try {
+        await beforeResetRootApplet?.()
+        if (activeRuntimeRevision.current !== runtimeRevision) return false
+        activeRuntimeRevision.current = runtimeRevision + 1
+        setRuntimeRevision((current) => current === runtimeRevision ? current + 1 : current)
+        return true
+      } finally {
+        if (resetOperation.current?.promise === operation) resetOperation.current = null
+      }
+    })()
+    resetOperation.current = { promise: operation, runtimeRevision }
+    return operation
+  }, [runtimeRevision])
+  const ownedRuntime = useMemo(() => {
+    if (!ownsEngine) return null
+    const runtimeOptions = runtimeRevision === 0
+      ? options
+      : { ...(options ?? {}), initialState: null, cleanState: null }
+    const engine = createAppletEngine({
+      applet,
+      composition,
+      desktopEnvironment,
+      options: runtimeOptions,
+      resetRootApplet,
+      rootApplet: RootApplet,
+      scheme,
+    })
+    return { engine, mountedEffects: 0, destroyed: false }
+  }, [ownsEngine, runtimeRevision])
+  const engine = suppliedEngine ?? inheritedEngine ?? ownedRuntime.engine
+  const selectedScheme = useSyncExternalStore(engine.runtime.subscribeTheme, engine.runtime.getScheme, engine.runtime.getScheme)
+  useLayoutEffect(() => {
+    if (hostsRuntime && scheme !== undefined) engine.runtime.setScheme(scheme)
+  }, [engine, hostsRuntime, scheme])
   useEffect(() => {
-    if (hostsRuntime && scheme !== undefined) resolvedEngine.runtime.setScheme(scheme)
-  }, [hostsRuntime, resolvedEngine, scheme])
-  const rootSurface = resolvedEngine.compositor.surface.read({
-    surfaceId: resolvedEngine.rootSurfaceId,
-  })
-  const rootThemeRoot = rootSurface?.props?.themeRoot !== undefined
-    ? rootSurface.props.themeRoot
-    : resolvedEngine.runtime.resolveApplicationNode(rootSurface?.application)?.themeRoot ?? null
-
+    if (engine) onEngine?.(engine)
+  }, [engine, onEngine])
   useEffect(() => {
-    onEngine?.(resolvedEngine)
-  }, [onEngine, resolvedEngine])
-
-  useEffect(() => {
-    if (!ownsEngine) return undefined
-    mountedEffects.current += 1
+    if (!ownedRuntime) return undefined
+    ownedRuntime.mountedEffects += 1
     return () => {
-      mountedEffects.current -= 1
+      ownedRuntime.mountedEffects -= 1
       queueMicrotask(() => {
-        if (
-          mountedEffects.current === 0
-          && !destroyedEngine.current
-        ) {
-          destroyedEngine.current = true
-          resolvedEngine.destroy()
+        if (ownedRuntime.mountedEffects === 0 && !ownedRuntime.destroyed) {
+          ownedRuntime.destroyed = true
+          ownedRuntime.engine.destroy()
         }
       })
     }
-  }, [ownsEngine, resolvedEngine])
-
-  const Provider = resolvedEngine.composition.Provider ?? PassThrough
-  const ThemeProvider = resolvedEngine.composition.ThemeProvider ?? AppletThemeProvider
-
+  }, [ownedRuntime])
+  const engineContext = useMemo(() => ({ engine, scheme: selectedScheme }), [engine, selectedScheme])
+  const presentation = useRef({ engine, revision: 0 })
+  if (presentation.current.engine !== engine) {
+    presentation.current = { engine, revision: presentation.current.revision + 1 }
+  }
+  const rootSurface = engine.compositor.surface.read({ surfaceId: engine.rootSurfaceId })
+  const rootThemeRoot = rootSurface?.props?.themeRoot !== undefined
+    ? rootSurface.props.themeRoot
+    : engine.runtime.resolveApplicationNode(rootSurface?.application)?.themeRoot ?? null
+  const Provider = engine.composition.Provider ?? PassThrough
+  const ThemeProvider = engine.composition.ThemeProvider ?? AppletThemeProvider
   const content = hostsRuntime
     ? (
-        <AppletStateStoreContext.Provider value={resolvedEngine.appletState}>
+        <AppletStateStoreContext.Provider value={engine.appletState}>
           <AppletApplicationContext.Provider
-            value={resolvedEngine.compositor.application.read({
-              applicationId: resolvedEngine.rootApplicationId,
-            })}
+            value={engine.compositor.application.read({ applicationId: engine.rootApplicationId })}
           >
-            <ThemeProvider
-              theme={resolvedEngine.runtime.themeFor(rootSurface)}
-              themeRoot={rootThemeRoot}
-            >
+            <ThemeProvider theme={engine.runtime.themeFor(rootSurface)} themeRoot={rootThemeRoot}>
               <desktopEnvironment.compositor.SurfaceComposer
                 applicationContext={AppletApplicationContext}
-                compositor={resolvedEngine.compositor}
-                surfaceId={resolvedEngine.rootSurfaceId}
+                compositor={engine.compositor}
+                surfaceId={engine.rootSurfaceId}
               >
                 {children}
               </desktopEnvironment.compositor.SurfaceComposer>
@@ -1820,73 +1912,49 @@ function AppletEngineRuntime({
         </AppletStateStoreContext.Provider>
       )
     : children
-
   return (
-    <AppletEngineContext.Provider value={engineContext}>
+    <AppletEngineContext.Provider key={presentation.current.revision} value={engineContext}>
       <AppletEngineOwnershipContext.Provider value={ownsEngine}>
-        <Provider {...dnd}>
-          {content}
-        </Provider>
+        <Provider {...dnd}>{content}</Provider>
       </AppletEngineOwnershipContext.Provider>
     </AppletEngineContext.Provider>
   )
 }
 
-function OwnedAppletEngine({ options, ...props }) {
-  const [runtimeRevision, setRuntimeRevision] = useState(0)
-  const activeRuntimeRevision = useRef(runtimeRevision)
-  const resetOperation = useRef(null)
-  activeRuntimeRevision.current = runtimeRevision
-  const resetRootApplet = useCallback(({ beforeResetRootApplet } = {}) => {
-    if (activeRuntimeRevision.current !== runtimeRevision) {
-      return Promise.resolve(false)
-    }
-    if (resetOperation.current?.runtimeRevision === runtimeRevision) {
-      return resetOperation.current.promise
-    }
-
-    let operation
-    operation = (async () => {
-      try {
-        await beforeResetRootApplet?.()
-        if (activeRuntimeRevision.current !== runtimeRevision) return false
-        activeRuntimeRevision.current = runtimeRevision + 1
-        setRuntimeRevision((current) => (
-          current === runtimeRevision ? current + 1 : current
-        ))
-        return true
-      } finally {
-        if (resetOperation.current?.promise === operation) {
-          resetOperation.current = null
-        }
-      }
-    })()
-    resetOperation.current = { promise: operation, runtimeRevision }
-    return operation
-  }, [runtimeRevision])
-  const runtimeOptions = runtimeRevision === 0
-    ? options
-    : {
-        ...(options ?? {}),
-        initialState: null,
-        cleanState: null,
-      }
-
-  return (
-    <AppletEngineRuntime
-      {...props}
-      key={runtimeRevision}
-      options={runtimeOptions}
-      resetRootApplet={resetRootApplet}
-    />
-  )
-}
-
-export default function AppletEngine(props) {
+export function useWhichApplet({ applet, application: suppliedApplication, enabled = true, engine: suppliedEngine, surface: suppliedSurface }) {
   const inheritedEngine = useContext(AppletEngineContext)?.engine ?? null
-  return props.engine || inheritedEngine
-    ? <AppletEngineRuntime {...props} />
-    : <OwnedAppletEngine {...props} />
+  const engine = enabled ? suppliedEngine ?? inheritedEngine : null
+  const inheritedApplication = useContext(AppletApplicationContext)
+  const inheritedDefinition = engine && engine === inheritedEngine && !suppliedApplication && !suppliedSurface && inheritedApplication
+    ? engine.runtime.resolveApplicationNode(inheritedApplication)
+    : null
+  const inheritedOccurrence = inheritedDefinition?.Applet === applet ? inheritedApplication : null
+  const suppliedOccurrence = suppliedApplication && suppliedSurface
+  const recordedSurface = engine && suppliedSurface && !suppliedOccurrence
+    ? engine.compositor.surface.read({ surfaceId: suppliedSurface.surfaceId })
+    : null
+  const surfaceApplication = !suppliedApplication && recordedSurface
+    ? engine.compositor.application.read({ applicationId: recordedSurface.applicationId })
+    : null
+  const application = engine ? suppliedApplication ?? surfaceApplication
+    ?? inheritedOccurrence ?? engine.runtime.applicationForNode(applet) : null
+  const [anchorSurfaceId, setAnchorSurfaceId] = useState(null)
+  const rootApplication = Boolean(application && application.applicationId === engine?.rootApplicationId)
+  const rootSurfaceId = rootApplication ? engine.rootSurfaceId : null
+  const surfaceId = engine ? suppliedSurface?.surfaceId ?? rootSurfaceId ?? anchorSurfaceId : null
+  const currentSurface = suppliedOccurrence ? suppliedSurface
+    : surfaceId ? engine.compositor.surface.read({ surfaceId }) : null
+  const surface = engine && currentSurface?.applicationId === application?.applicationId ? currentSurface : null
+  useLayoutEffect(() => {
+    if (!engine || !application || suppliedSurface || rootApplication) return
+    const anchor = engine.runtime.ensureAnchorSurface({
+      applicationId: application.applicationId,
+      key: `resident:${application.applicationId}`,
+      workspaceId: applet.meta.applicationName,
+    })
+    setAnchorSurfaceId(anchor.surfaceId)
+  }, [application?.applicationId, applet, engine, rootApplication, suppliedSurface])
+  return { application, engine, surface }
 }
 
 AppletEngine.collectApplicationRegistry = collectApplicationRegistry
@@ -1930,5 +1998,6 @@ AppletEngine.useApplication = function useAppletApplication() {
   return useContext(AppletApplicationContext)
 }
 AppletEngine.useState = useAppletState
+AppletEngine.useWhichApplet = useWhichApplet
 
 export { useAppletState }

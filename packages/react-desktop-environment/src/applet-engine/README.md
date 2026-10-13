@@ -16,7 +16,8 @@ import {
 ```
 
 The entry also exports `Deck`, `useDeckComposition`,
-`useChildSurfaceComposition`, `AppletApplicationContext`,
+`useChildSurfaceComposition`, `useWhichApplet`, `resolveDeckProps`,
+`minimumPresentationSize`, `constrainPresentationSize`, `AppletApplicationContext`,
 `AppletStateStoreContext`, `createAppletStateStore`, `immutableJson`,
 `validateSurfaceState`, `useAppletState`, and generic theme contracts described
 below. All bindings use one canonical set of contexts and the consumer's React.
@@ -36,6 +37,31 @@ recursive and immutable; cycles and conflicting identities are rejected.
 Definitions may publish `Surface`, `Bar`, `Presentation`, `Placeholder`,
 `Spine`, and `Switch` material. Their local visual composition remains theirs.
 
+The registry registers the Applet function itself. That function receives its
+Application and Surface as props and reads the engine with `AppletEngine.use()`.
+`SurfaceComposer` supplies the records for tree-rendered occurrences. Registered
+Applet bodies do not call `useWhichApplet`.
+
+A direct composition owner supplies the records itself. When it already owns
+an engine, a standalone root can be mounted directly:
+
+```jsx
+const rootApplication = { applicationId: engine.rootApplicationId }
+const rootSurface = { surfaceId: engine.rootSurfaceId }
+const application = engine.compositor.application.read(rootApplication)
+const surface = engine.compositor.surface.read(rootSurface)
+
+<AppletEngine applet={Applet} engine={engine}>
+  <Applet application={application} surface={surface} />
+</AppletEngine>
+```
+
+The owner creates that engine with `AppletEngine.create({ applet: Applet,
+desktopEnvironment: Applet.desktopEnvironment, composition })` and disposes it
+when its lifetime ends. If a direct composition
+owner lacks occurrence records, it calls `useWhichApplet` in its own existing
+component and passes the result to the Applet. No entry wrapper is required.
+
 An optional `.Settings` is the exact registered `applets.settings` definition.
 `collectSettingsContributions(registry, ownerNodes)` inspects only the immediate
 children of the exact supplied containers and returns registered contribution
@@ -48,13 +74,14 @@ The engine registers its `deck` definition alongside the supplied tree,
 creates permanent Applications and a root Window/Surface, and owns state,
 checkpoints, occurrence operations, and unreachable dynamic cleanup.
 
-The outermost React `AppletEngine` constructs and disposes its engine. A nested
-binding reuses that engine. A supplied live `scheme` updates that same runtime.
+An `AppletEngine` provider without a supplied or inherited engine constructs
+and disposes its engine. It owns reset and theme observation. A nested provider
+reuses the existing engine. A supplied live `scheme` updates that same runtime.
 An explicitly injected `engine` receives its root Application/state/composition
 contexts, including when it differs from a surrounding runtime. Injecting the
 same surrounding engine preserves the current nested Application context.
 The injector owns disposal through `engine.destroy()`.
-`AppletEngine.useOwnership()` reports whether the current binding constructed
+`AppletEngine.useOwnership()` reports whether the current Applet binding owns
 its engine. `onEngine` receives the active instance. Reset replaces an owned
 runtime and its occurrences; it does not replace the surrounding host.
 
@@ -104,26 +131,48 @@ the Deck supplies no additional visual content. Compositor traversal still
 enters the complete tree. A visual consumer supplies its own presentation and
 selection/disclosure treatment.
 
-The shared compositor `SurfaceComposer` owns recursive runtime traversal. It
-receives `applicationContext={AppletApplicationContext}` and enters the linked
-Application with `application`, `surface`, `window`, and `controls`. Presentation
-owners consume these structural records instead of spreading them into DOM.
+The shared compositor `SurfaceComposer` owns recursive runtime traversal. The
+live Surface and Window tree determines which occurrences it renders and how
+they nest. Changing that tree changes the rendered hierarchy without editing
+host JSX. Supplied presentation arranges the current children by order,
+selection, and placement, including mounted and floating frames. Routing known
+Applets or fixed occurrence identities into predetermined slots is directly
+authored composition; it does not belong around `SurfaceComposer`.
+
+The composer receives `applicationContext={AppletApplicationContext}` and
+enters the linked Application with `application`, `surface`, `window`, and
+`controls`. Presentation owners consume these structural records instead of
+spreading them into DOM.
 They combine immediate-child selection, exposure, and allocation while retaining
 runtime composition. Product presentation-only material may unmount without
 removing the occurrence; ongoing operations and working state remain with
 their declared retained owners.
 
-`useChildSurfaceComposition({ engine, ownerSurfaceId,
-onSelectedSurfaceChange })` subscribes to the owner and its ordered immediate
-children. It supplies `childSurfaces`, `childSurfaceIds`, `selectedSurfaceId`,
-and `selectSurface`, retaining an occupied resident slot during a peel and
-supplying the first available immediate child when selection is unavailable.
-Attention or other visual relations are composed by the consumer.
+`useChildSurfaceComposition({ engine, ownerSurfaceId, fullscreen,
+onSelectedSurfaceChange })` subscribes to the owner and its immediate children.
+It supplies `childSurfaces`, `childSurfaceIds`, `selectedSurfaceId`, and
+`selectSurface`. Optional `fullscreen` filters mounted or floating presentations.
+Child material keeps declared `props.order` for menus and switches; visibility
+comes from the engine's stack. Attention and visual relations are composed by
+the consumer.
 
 ## Selection and residency
 
-Each Surface selects at most one immediate child. Selection composes
-recursively. Residence and member admission are independent. A resident recipe
+Each Surface selects at most one immediate child. Selecting a card promotes it
+to the top of its owner's stack. Removing that card reveals the next surviving
+card; removing a buried card leaves the top unchanged. Selection composes
+recursively and survives checkpoints. `runtime.readChildStack({ surfaceId,
+fullscreen })` and `runtime.readSelectedChild({ surfaceId, fullscreen })` expose
+the same result to React and imperative consumers. Mounted selection excludes
+floating children, including a card that has just left fullscreen.
+
+`runtime.selectChild({ surfaceId, childSurfaceId, supply })` activates and raises
+an ordinary selection. Missing selection is supplied without manufacturing a
+new user activation. `props.order` is a stable presentation order, independent
+of visibility. Fullscreen retains the composed parent; a consumer choosing
+another destination reparents explicitly before invoking fullscreen.
+
+Residence and member admission are independent. A resident recipe
 can declare `addable: true` while its recipe-owned members continue to be
 replenished. Omission defaults recipe admission to false. Ordinary Deck props
 default `addable` and `unmountable` to true; recipe-supplied Decks set
@@ -151,13 +200,76 @@ admitting resident Deck leaves its recipe-owned members intact.
 
 The generic `Deck` invokes `composition.DeckSurface` with the live model:
 `application`, `engine`, `surface`, `composition`, `residents`, `addable`,
-`unmountable`, `menuOpen`, `onMenuOpenChange`, and `departChild`.
+`unmountable`, `menuOpen`, and `onMenuOpenChange`.
 `useDeckComposition` provides that same model for direct material composition.
-The controller owns ordered resident slots, placeholder definition lookup,
-nonpersistent menu state, and successor selection when an ordinary active child
-departs. The consumer provides movement declarations and visual rendering.
+The controller owns ordered resident slots, placeholder definition lookup and
+nonpersistent menu state. `resolveDeckProps(props)` supplies the same admission
+and unmounting defaults for controllers and imperative opening operations.
+The consumer provides movement declarations and visual rendering.
 `Deck.Bar`, `Presentation`, `Placeholder`, `Spine`, and `Switch` resolve the
 corresponding supplied DeckSurface parts through the same runtime.
+
+## Occurrence operations
+
+`AppletEngine.useWhichApplet`, also exported as `useWhichApplet`, connects a
+direct composition owner's Applet occurrence. It returns
+`{ application, engine, surface }`. The caller supplies `applet`; a
+definition-local binding supplies that definition automatically. The hook uses
+an explicitly supplied `engine` or the current engine context, and returns null
+records when neither exists. An inherited Application belongs only to its
+context's engine. Engine creation, reset, theme observation, disposal, and the
+`onEngine` callback belong to the provider.
+
+The direct owner calls this hook only when it needs occurrence records. The
+hook resolves a matching inherited Application or the definition's permanent
+Application and ensures its anchor Surface and linked Window. Supplied records
+are retained. A matching inherited occurrence retains its exact registered
+path even when its definition appears under several parents. The direct owner
+waits for the Surface, then passes the records into the Applet.
+
+`SurfaceComposer` already supplies occurrence records. Its Applets consume
+those props without calling `useWhichApplet`. A fixed JSX composition chooses
+its children and positions; a `SurfaceComposer` composition renders children
+from the runtime tree. Whether the user can add or remove an Applet does not
+determine which composition owns it.
+
+`runtime.presentedSurface({ surfaceId })` follows selected Deck children to the
+actual presented occurrence. `runtime.isDeckSurface({ surfaceId })` and
+`runtime.surfacePlacementOwnerId({ surfaceId })` expose the registered Deck and
+its placement owner without another registry. `minimumPresentationSize({ engine,
+surface })` resolves the presented Applet's minimum, and
+`constrainPresentationSize(size, minimumSize)` applies it. Full Presentation
+sizing uses these calculations; Bars, Spines and host allocations remain
+separate.
+
+`runtime.beginPeel({ surfaceId, ownerSurfaceId, deckApplicationId })` moves the
+existing occurrence provisionally. Supplying `applicationId`,
+`applicationProps` and `surfaceProps` instead of `surfaceId` creates a provisional
+copy. An optional Deck Application supplies the floating frame when the moved
+occurrence is not already a Deck. The returned transaction has
+`movingSurfaceId`, `frameSurfaceId`, `cancel()`, `retain({ geometry })`, and
+`remove()`. Missing source or destination records return null.
+
+Cancellation restores the same occurrence, parent, geometry and selection
+before releasing the source. Completion retains the final geometry and releases
+residence so its recipe supplies a fresh occurrence. A selected resident keeps
+its occupied slot and Placeholder while held; completion selects the replacement
+in that slot. Transaction disposal and runtime destruction release subscriptions
+and provisional occurrences. Pointer tracking, frame measurements, animation,
+confirmation and awaiting a rendered frame belong to UI.
+
+The final immediate member leaving an ordinary Deck closes that Deck after the
+current transition. This composes through emptied ancestors. An initially empty
+Deck remains available for construction; a held peel delays closure until it is
+retained or removed. Cancellation restores its member first. Recipe Decks retain
+their independent supply requirement.
+
+`runtime.mergeDeck({ surfaceId, targetSurfaceId })` transfers a source Deck's
+children to an admitting Deck and preserves its selected child. A single Applet
+may also be transferred. The emptied source Deck closes, including a recipe
+anchor; transferred children leave their former resident slots. The operation
+returns false when records are absent, the target is not an admitting Deck,
+or the transfer would create a parenting cycle.
 
 ## Named Application state
 

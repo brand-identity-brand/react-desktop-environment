@@ -91,6 +91,12 @@ themes. Consumers supply their Applet definitions and root composition material.
 The definition binder and direct constructor share the same composition API and
 canonical React contexts. Resident admission is independent of resident supply.
 
+The [stock Applet UI](./src/ui/applet/README.md), exported from
+`react-desktop-environment/ui/applet`, supplies an interactive wireframe through
+the same composition API. Start with its `appletComposition` and replace visual
+material for a custom look. Applet behavior remains in AppletEngine; consumers
+building different behavior use the compositor primitives directly.
+
 ## Checkpoint recovery
 
 ```js

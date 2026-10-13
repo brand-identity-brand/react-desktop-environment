@@ -8,13 +8,8 @@ export default function AppletEnvironment({
   desktopEnvironment,
 }) {
   const inheritedDesktopEnvironment = useContext(AppletEnvironmentContext)
-  const resolvedDesktopEnvironment = desktopEnvironment
-    ?? inheritedDesktopEnvironment
-    ?? defaultDesktopEnvironment
-
-  if (!resolvedDesktopEnvironment) {
-    throw new TypeError('AppletEnvironment requires a desktop environment')
-  }
+  const resolvedDesktopEnvironment = desktopEnvironment ?? inheritedDesktopEnvironment ?? defaultDesktopEnvironment
+  if (!resolvedDesktopEnvironment) throw new TypeError('AppletEnvironment requires a desktop environment')
 
   return (
     <AppletEnvironmentContext.Provider value={resolvedDesktopEnvironment}>
@@ -24,9 +19,5 @@ export default function AppletEnvironment({
 }
 
 AppletEnvironment.use = function useAppletEnvironment() {
-  const desktopEnvironment = useContext(AppletEnvironmentContext)
-  if (!desktopEnvironment) {
-    throw new Error('AppletEnvironment.use must be called inside an Applet')
-  }
-  return desktopEnvironment
+  return useContext(AppletEnvironmentContext)
 }

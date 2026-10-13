@@ -1,6 +1,7 @@
-import React, { useCallback } from 'react'
+import React from 'react'
 import AppletEngine from './AppletEngine.jsx'
 import useChildSurfaceComposition from './useChildSurfaceComposition.js'
+import { resolveDeckProps } from './deckProps.js'
 
 /** The engine's Deck definition; replaceable material receives its live model. */
 export default function Deck({ application, surface, ...props }) {
@@ -34,31 +35,15 @@ export function useDeckComposition({ engine, surface }) {
       residentSurfaceId: resident?.surfaceId ?? null,
     }]
   })
-  const departChild = useCallback((child) => {
-    if (child.props?.resident?.containerSurfaceId === surface.surfaceId) return
-    const owner = engine.compositor.surface.read({ surfaceId: surface.surfaceId })
-    if (owner?.selectedChildSurfaceId !== child.surfaceId) return
-    const children = engine.compositor.surface.readChildren({ surfaceId: surface.surfaceId })
-      .toSorted((first, second) => (first.props?.order ?? 0) - (second.props?.order ?? 0))
-    const index = children.findIndex(({ surfaceId }) => surfaceId === child.surfaceId)
-    const successor = children[index + 1]
-      ?? children.find(({ surfaceId }) => surfaceId !== child.surfaceId)
-    if (successor) {
-      engine.runtime.selectChild({
-        surfaceId: surface.surfaceId,
-        childSurfaceId: successor.surfaceId,
-      })
-    }
-  }, [engine, surface?.surfaceId])
+  const { addable, unmountable } = resolveDeckProps(surface?.props)
 
   return {
-    addable: surface?.props?.addable ?? true,
+    addable,
     composition,
-    departChild,
     menuOpen,
     onMenuOpenChange: setMenuOpen,
     residents,
-    unmountable: surface?.props?.unmountable ?? true,
+    unmountable,
   }
 }
 

@@ -18,6 +18,9 @@ export default function Window({
   className,
   style,
   onPointerDown,
+  actions,
+  draggable = true,
+  contentStyle,
   ...props
 }) {
   const drag = useRef(null)
@@ -26,7 +29,7 @@ export default function Window({
   const size = surface?.size ?? DEFAULT_SIZE
 
   const startDragging = (event) => {
-    if (event.button !== 0 || event.target.closest?.(INTERACTIVE_SELECTOR)) return
+    if (!draggable || event.button !== 0 || event.target.closest?.(INTERACTIVE_SELECTOR)) return
     drag.current = {
       pointerId: event.pointerId,
       origin: { x: event.clientX, y: event.clientY },
@@ -98,7 +101,7 @@ export default function Window({
           padding: '0.55rem 0.7rem',
           borderBottom: '1px solid #cbd3c8',
           background: '#edf1e9',
-          cursor: drag.current ? 'grabbing' : 'grab',
+          cursor: draggable ? drag.current ? 'grabbing' : 'grab' : undefined,
           userSelect: 'none',
           touchAction: 'none',
         }}
@@ -108,18 +111,20 @@ export default function Window({
           className="rde-window__actions"
           style={{ display: 'flex', gap: '0.4rem' }}
         >
-          <button type="button" onClick={() => controls?.hide?.()}>
-            Hide
-          </button>
-          <button type="button" onClick={() => controls?.close?.()}>
-            Close
-          </button>
+          {actions ?? <>
+            <button type="button" onClick={() => controls?.hide?.()}>
+              Hide
+            </button>
+            <button type="button" onClick={() => controls?.close?.()}>
+              Close
+            </button>
+          </>}
         </span>
       </header>
 
       <div
         className="rde-window__content"
-        style={{ position: 'relative', padding: '0.85rem' }}
+        style={{ position: 'relative', padding: '0.85rem', ...contentStyle }}
       >
         {children}
       </div>

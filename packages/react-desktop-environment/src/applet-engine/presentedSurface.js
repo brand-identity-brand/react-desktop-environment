@@ -1,7 +1,9 @@
+import Deck from './Deck.jsx'
+
 export function isDeckSurface({ engine, surface }) {
   if (!engine || !surface) return false
   const node = engine.runtime.resolveApplicationNode(surface.application)
-  return node?.applicationName === 'deck'
+  return node?.Applet === Deck
 }
 
 export default function presentedSurface({ engine, surface }) {
@@ -13,12 +15,10 @@ export default function presentedSurface({ engine, surface }) {
     && !visited.has(presented.surfaceId)
   ) {
     visited.add(presented.surfaceId)
-    const children = engine.compositor.surface.readChildren({
+    const selected = engine.runtime.readSelectedChild({
       surfaceId: presented.surfaceId,
     })
-    presented = children.find(({ surfaceId }) => (
-      surfaceId === presented.selectedChildSurfaceId
-    )) ?? children[0] ?? presented
+    presented = selected ?? presented
   }
 
   return presented
